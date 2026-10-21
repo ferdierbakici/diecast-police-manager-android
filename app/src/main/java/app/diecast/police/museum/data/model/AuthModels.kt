@@ -5,7 +5,18 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class UserMetadata(
-    @SerialName("display_name") val displayName: String? = null
+    /**
+     * Supabase yerel alan adı (kullanıcı kendi profili için ayarlar).
+     */
+    @SerialName("display_name") val displayName: String? = null,
+    /**
+     * Google OAuth sağlayıcısının verdiği ad (örn. "Ferdi Erbakici").
+     */
+    @SerialName("full_name") val fullName: String? = null,
+    /**
+     * Google'ın verdiği alternatif alan adı.
+     */
+    @SerialName("name") val name: String? = null
 )
 
 @Serializable
@@ -14,8 +25,17 @@ data class AuthUser(
     val email: String? = null,
     @SerialName("user_metadata") val userMetadata: UserMetadata? = null
 ) {
+    /**
+     * Gosterilecek ad.
+     *
+     * Oncelik: kullaniciya ait `display_name` -> Google `full_name` -> Google `name`
+     * -> e-posta yerel adi.
+     */
     val displayName: String?
-        get() = userMetadata?.displayName?.takeIf { it.isNotBlank() } ?: email?.substringBefore('@')
+        get() = userMetadata?.displayName?.takeIf { it.isNotBlank() }
+            ?: userMetadata?.fullName?.takeIf { it.isNotBlank() }
+            ?: userMetadata?.name?.takeIf { it.isNotBlank() }
+            ?: email?.substringBefore('@')
 }
 
 @Serializable

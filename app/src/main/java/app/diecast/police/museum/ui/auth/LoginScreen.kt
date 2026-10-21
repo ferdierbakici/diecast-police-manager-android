@@ -49,6 +49,9 @@ fun LoginScreen(
 ) {
     val viewModel: LoginViewModel = appViewModel { LoginViewModel(it.authRepository) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val session by viewModel.session.collectAsStateWithLifecycle()
+    val authMessage by viewModel.authMessage.collectAsStateWithLifecycle()
+    val googleUrl by viewModel.googleUrl.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var email by remember { mutableStateOf("") }
@@ -56,11 +59,28 @@ fun LoginScreen(
     var displayName by remember { mutableStateOf("") }
     var registerMode by remember { mutableStateOf(false) }
 
-    LaunchedEffect(state.signedIn) {
-        if (state.signedIn) {
-            viewModel.consumeNavigation()
-            onSignedIn()
-        }
+    // Ekran acildiginda oturum var miydi? (OAuth donusu tetiklemeli)
+    //
+    // NOT: Oturumun varligi "giris olayini" tespit etmek icin kullanilamaz:
+    // oturum kalici olarak saklandigi icin her ekran acilisinda zaten vardir.
+    // Oturum yeni olustugunda "signedInEvents" olayi yayinlanir; ona bakilir.
+    LaunchedEffect(Unit) {
+        viewModel.signedInEvents.collect { onSignedIn() }
+    }
+
+    // Deep link ile gelen hata mesaji
+    LaunchedEffect(authMessage) {
+        val message = authMessage ?: return@LaunchedEffect
+        viewModel.showAuthMessage(message)
+    }
+
+    // Google OAuth: URL uretildikten sonra tarayici (CustomTab) acilir.
+    LaunchedEffect(googleUrl) {
+        val url = googleUrl ?: return@LaunchedEffect
+        val intent = CustomTabsIntent.Builder().build()
+        runCatching { intent.launchUrl(context, android.net.Uri.parse(url)) }
+            .onFailure { viewModel.showAuthMessage("Tarayici acilamadi. Google girisi yapilamadi.") }
+        viewModel.consumeGoogleUrl()
     }
 
     Column(
@@ -70,6 +90,32 @@ fun LoginScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        val activeSession = session
+        if (activeSession != null) {
+            // --- Giris yapilmis: hesap bilgisi -----------------------------
+            Text(
+                text = "Hesabim",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Text(
+                text = activeSession.email ?: activeSession.userId,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            activeSession.displayName?.takeIf { it.isNotBlank() }?.let {
+                Text(text = it, style = MaterialTheme.typography.bodySmall, color = MuseumInkSoft)
+            }
+            OutlinedButton(
+                onClick = { viewModel.signOut() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp)
+            ) {
+                Text("Cikis yap")
+            }
+            return@Column
+        }
+
         Text(
             text = if (registerMode) "Hesap olustur" else "Giris yap",
             style = MaterialTheme.typography.headlineMedium,
@@ -160,17 +206,7 @@ fun LoginScreen(
         }
 
         OutlinedButton(
-            onClick = {
-                val intent = CustomTabsIntent.Builder().build()
-                runCatching {
-                    intent.launchUrl(
-                        context,
-                        android.net.Uri.parse(
-                            "${Config.AUTH_URL}/authorize?provider=google&redirect_to=${Config.REDIRECT_URI}"
-                        )
-                    )
-                }
-            },
+            onClick = { viewModel.startGoogleLogin() },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Google ile giris yap")

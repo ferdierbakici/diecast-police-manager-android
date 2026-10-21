@@ -7,6 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.lifecycle.lifecycleScope
+import app.diecast.police.museum.core.OAuthRedirect
+import app.diecast.police.museum.data.repository.AuthResult
 import app.diecast.police.museum.ui.LocalAppContainer
 import app.diecast.police.museum.ui.navigation.MuseumApp
 import app.diecast.police.museum.ui.theme.DiecastMuseumTheme
@@ -39,25 +41,50 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Google OAuth donusu: diecastpolice://auth-callback#access_token=...&refresh_token=...
-     * Token'lar URL fragment'inda gelir.
+     * Google OAuth donusu: diecastpolice://auth-callback
+     *
+     * PKCE akisinda donus `?code=...` ile gelir ve token degisimi yapilir.
+     * Eski (implicit) akisde token'lar `#access_token=...` fragment'inda gelir;
+     * geriye donuk uyum icin o yol da desteklenir.
      */
     private fun handleOAuthRedirect(intent: Intent?, container: AppContainer) {
         val data = intent?.data ?: return
-        if (data.scheme != "diecastpolice" || data.host != "auth-callback") return
+        val redirect = OAuthRedirect.parse(
+            scheme = data.scheme,
+            host = data.host,
+            query = data.query,
+            fragment = data.fragment
+        ) ?: return
 
-        val fragment = data.fragment ?: return
-        val params = fragment.split("&").mapNotNull { part ->
-            val idx = part.indexOf('=')
-            if (idx <= 0) null else part.substring(0, idx) to part.substring(idx + 1)
-        }.toMap()
+        // --- PKCE: sunucu `?code=...` gonderir -------------------------------
+        if (redirect.hasCode) {
+            lifecycleScope.launch {
+                when (val result = container.authRepository.exchangeCodeForSession(redirect.code!!)) {
+                    is AuthResult.Success -> Unit
+                    is AuthResult.NeedsEmailConfirmation ->
+                        container.authRepository.setAuthMessage("Hesabiniz e-posta ile dogrulanmali.")
+                    is AuthResult.Failure ->
+                        container.authRepository.setAuthMessage(result.message)
+                }
+            }
+            return
+        }
 
-        val accessToken = params["access_token"] ?: return
-        val refreshToken = params["refresh_token"] ?: return
-        val expiresIn = params["expires_in"]?.toLongOrNull() ?: 3600L
+        // --- Hata donusu: ?error=...&error_description=... ---------------------
+        if (redirect.hasError) {
+            container.authRepository.setAuthMessage(redirect.errorMessage())
+            return
+        }
+
+        // --- Implicit (eski akis): token'lar fragment'ta ---------------------
+        if (!redirect.hasTokens) return
 
         lifecycleScope.launch {
-            container.authRepository.signInWithTokens(accessToken, refreshToken, expiresIn)
+            container.authRepository.signInWithTokens(
+                accessToken = redirect.accessToken!!,
+                refreshToken = redirect.refreshToken!!,
+                expiresInSeconds = redirect.expiresIn ?: 3600L
+            )
         }
     }
 }

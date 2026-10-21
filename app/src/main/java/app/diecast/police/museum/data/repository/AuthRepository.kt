@@ -2,13 +2,21 @@ package app.diecast.police.museum.data.repository
 
 import android.content.Context
 import app.diecast.police.museum.core.Config
+import app.diecast.police.museum.core.Pkce
 import app.diecast.police.museum.data.local.SessionStore
 import app.diecast.police.museum.data.model.AuthErrorBody
 import app.diecast.police.museum.data.model.AuthSession
 import app.diecast.police.museum.data.model.Session
 import app.diecast.police.museum.data.remote.Json
 import app.diecast.police.museum.data.remote.RestClient
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -27,6 +35,38 @@ class AuthRepository(
     private val store: SessionStore
 ) {
     val sessionFlow: Flow<Session?> = store.sessionFlow
+
+    /**
+     * OAuth akisindan gelen mesaj (hata gibi). Ekranlar bunu izleyip gosterir.
+     * Deep link MainActivity uzerinden gelir; ekrana buradan tasinir.
+     */
+    private val _authMessage = MutableStateFlow<String?>(null)
+    val authMessage: StateFlow<String?> = _authMessage.asStateFlow()
+
+    fun setAuthMessage(message: String?) { _authMessage.value = message }
+    fun consumeAuthMessage() { _authMessage.value = null }
+
+    /**
+     * "Giris tamamlandi" olayi.
+     *
+     * Oturumun *durumundan* (session != null) giris *olayini* ayirt edemeyiz:
+     * oturum kalici olarak saklandigi icin her sayfa acilisinda zaten vardir ve
+     * akis null -> non-null gecisi yalnizca oturumun **yeni olustugu** anda
+     * olusur. Bu yuzden ayri bir olay akisi tutulur.
+     *
+     * `replay = 0`: olay, o an dinleyen ekran varsa teslim edilir; yoksa duser
+     * (ekran acilmadysa zaten navigate edilecek bir yer yoktur).
+     */
+    private val _signedInEvents = MutableSharedFlow<Session>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val signedInEvents: SharedFlow<Session> = _signedInEvents.asSharedFlow()
+
+    private suspend fun notifySignedIn(session: Session) {
+        _signedInEvents.emit(session)
+    }
 
     // ------------------------------------------------------------------ //
     //  Giris / kayit
@@ -84,6 +124,7 @@ class AuthRepository(
             displayName = null
         )
         store.save(session)
+        notifySignedIn(session)
         return AuthResult.Success(session)
     }
 
@@ -119,12 +160,45 @@ class AuthRepository(
         return newSession.accessToken
     }
 
-    fun googleOAuthUrl(): String =
-        "${Config.AUTH_URL}/authorize?provider=google&redirect_to=${Config.REDIRECT_URI}"
+    /**
+     * Google OAuth baslatma URL'i (PKCE akisi).
+     *
+     * Uretilen `code_verifier` **kalici** olarak saklanir: OAuth tarayicida
+     * tamamlanirken uygulama arka planda kalir ve sistem tarafindan
+     * oldurulebilir. Verifier bellekte kalsaydi donuste "dogrulama verisi
+     * bulunamadi" hatasi alirdik.
+     */
+    suspend fun googleOAuthUrl(): String {
+        val verifier = Pkce.newCodeVerifier()
+        store.savePkceVerifier(verifier)
+        return Pkce.authorizeUrl(Config.AUTH_URL, Config.REDIRECT_URI, verifier)
+    }
+
+    /**
+     * PKCE donusu: Supabase `?code=...` gonderir; token degisimi yapilir.
+     *
+     * Not: dogrulama verisi tek kullanimliktir; basarili/başarisiz her
+     * denemeden sonra temizlenir.
+     */
+    suspend fun exchangeCodeForSession(code: String): AuthResult {
+        val verifier = store.readPkceVerifier()
+        store.clearPkceVerifier()
+        if (verifier.isNullOrBlank()) {
+            return AuthResult.Failure(
+                "Giris dogrulama verisi bulunamadi. Lutfen tekrar deneyin."
+            )
+        }
+        val body = buildJsonObject {
+            put("auth_code", code)
+            put("code_verifier", verifier)
+        }.toString()
+        val result = rest.post("${Config.AUTH_URL}/token?grant_type=pkce", body)
+        return toResult(result, null)
+    }
 
     // ------------------------------------------------------------------ //
 
-    private suspend fun toResult(result: app.diecast.police.museum.data.remote.HttpResult, email: String): AuthResult {
+    private suspend fun toResult(result: app.diecast.police.museum.data.remote.HttpResult, email: String?): AuthResult {
         if (!result.isSuccess) {
             val error = runCatching {
                 Json.default.decodeFromString<AuthErrorBody>(result.body)
@@ -146,7 +220,8 @@ class AuthRepository(
         val refresh = session.refreshToken
         val userId = session.user?.id
         if (access.isNullOrBlank() || refresh.isNullOrBlank() || userId.isNullOrBlank()) {
-            return AuthResult.NeedsEmailConfirmation(email)
+            return if (email != null) AuthResult.NeedsEmailConfirmation(email)
+            else AuthResult.Failure("Oturum yaniti eksik token iceriyor.")
         }
 
         val stored = Session(
@@ -158,6 +233,7 @@ class AuthRepository(
             displayName = session.user?.displayName
         )
         store.save(stored)
+        notifySignedIn(stored)
         return AuthResult.Success(stored)
     }
 }

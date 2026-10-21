@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.diecast.police.museum.data.model.Session
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 
 private val Context.sessionDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -28,6 +29,15 @@ class SessionStore(private val context: Context) {
         val USER_ID = stringPreferencesKey("user_id")
         val EMAIL = stringPreferencesKey("email")
         val NAME = stringPreferencesKey("display_name")
+
+        /**
+         * PKCE `code_verifier`.
+         *
+         * OAuth tarayicida (CustomTab) tamamlanirken uygulama arka planda kalir
+         * ve sistem tarafindan oldurulebilir. Verifier bellekte tutulursa donuste
+         * "dogrulama verisi bulunamadi" hatasi aliriz; bu yuzden kalici yazilir.
+         */
+        val PKCE_VERIFIER = stringPreferencesKey("pkce_code_verifier")
     }
 
     val sessionFlow: Flow<Session?> = context.sessionDataStore.data.map { prefs ->
@@ -62,5 +72,27 @@ class SessionStore(private val context: Context) {
 
     suspend fun clear() {
         context.sessionDataStore.edit { it.clear() }
+    }
+
+    /** PKCE dogrulama verisini kalici yazar (surec oldurulse bile korunsun). */
+    suspend fun savePkceVerifier(verifier: String) {
+        context.sessionDataStore.edit { prefs ->
+            prefs[Keys.PKCE_VERIFIER] = verifier
+        }
+    }
+
+    /** Kayitli PKCE dogrulama verisini okur. */
+    suspend fun readPkceVerifier(): String? {
+        val value = context.sessionDataStore.data
+            .map { prefs -> prefs[Keys.PKCE_VERIFIER] }
+            .firstOrNull()
+        return value?.takeIf { it.isNotBlank() }
+    }
+
+    /** Kullanildiktan sonra PKCE dogrulama verisini siler (tek kullanimliktir). */
+    suspend fun clearPkceVerifier() {
+        context.sessionDataStore.edit { prefs ->
+            prefs.remove(Keys.PKCE_VERIFIER)
+        }
     }
 }
