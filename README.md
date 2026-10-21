@@ -44,6 +44,31 @@ app/src/main/java/app/diecast/police/museum/
 **Kimlik:** GoTrue (`/auth/v1`) → JWT `Authorization: Bearer` başlığı
 **Oturum:** `DataStore` üzerinde saklanan access/refresh token
 
+### Google OAuth: PKCE akışı
+
+Google girişi **PKCE** (RFC 7636) ile yürütülür:
+
+1. `Pkce.newCodeVerifier()` → 43–128 karakterlik rastgele verifier
+2. Verifier **kalıcı olarak** `DataStore`'a yazılır, `code_challenge` (S256)
+   `/authorize?flow_type=pkce&code_challenge=…` isteğine eklenir
+3. Google → Supabase callback → `diecastpolice://auth-callback?code=…`
+4. `MainActivity.handleOAuthRedirect()` → `OAuthRedirect.parse()` →
+   `POST /token?grant_type=pkce` (`auth_code` + `code_verifier`) → oturum
+
+> Verifier **bellekte tutulmaz.** OAuth tarayıcıda tamamlanırken uygulama
+> arka planda kalır ve sistem tarafından öldürülebilir; bellekte tutulsaydı
+> dönüşte "doğrulama verisi bulunamadı" hatası alınırdı.
+
+`core/OAuthRedirect.kt` saf Kotlin'tir (Android'e bağımlı değil) ve dönüş
+adresini ayrıştırır: query önceliklidir, fragment'taki eski (implicit) token
+biçimi geriye dönük desteklenir.
+
+> **Giriş olayı ≠ oturum durumu.** Oturum `DataStore`'da kalıcı olduğu için
+> her ekran açılışında zaten vardır; bu yüzden "giris tamamlandı" bilgisi
+> ayrı bir olay kanalından (`AuthRepository.signedInEvents`) yayınlanır.
+> Aksi halde oturumu olan kullanıcı *Hesap* sekmesine her girdiğinde ekran
+> otomatik kapanıyordu.
+
 ### Web uygulamasıyla uyum
 
 Web'deki davranış birebir portlandı:
@@ -97,6 +122,9 @@ Kapsam:
 - `VehicleFieldMappingTest` — her JSON anahtarı doğru alana yansıyor mu
   (`@SerialName` eksiklikleri sessizce `null` üretir — bu test bunu yakalar)
 - `LenientSerializerTest` — değişken JSON tipleri (`"true"`, `"5"`, `null`)
+- `PkceTest` — RFC 7636 test vektörü, verifier/challenge üretimi, authorize URL'i
+- `OAuthRedirectTest` — dönüş adresi ayrıştırma (query/fragment, hata, yüzde kodlama)
+- `AuthUserMappingTest` — gosterilen adın eşlemesi (`display_name` → `full_name` → e-posta)
 
 ---
 
@@ -122,6 +150,10 @@ diecastpolice://auth-callback
 ```
 
 Bu olmadan Google ile giriş tarayıcıdan uygulamaya geri dönemez.
+
+> Not: GoTrue'un `state` kaydının ömrü ~10 dakikadır. Google ekranında uzun
+> beklenirse dönüş `error_code=bad_oauth_state` ile **Site URL**'e düşer ve
+> uygulama açılmaz; bu durumda akış baştan başlatılmalıdır.
 
 ---
 
