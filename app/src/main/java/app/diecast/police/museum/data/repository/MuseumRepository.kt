@@ -107,11 +107,16 @@ class MuseumRepository(private val rest: RestClient) {
             path = "/vehicles",
             params = mapOf(
                 "select" to Config.VEHICLE_SELECT,
-                "id" to "in.(${topIds.joinToString(",")})",
-                "order" to "id.desc"
+                "id" to "in.(${topIds.joinToString(",")})"
             )
         )
-        return decodeVehicles(detail.body)
+        if (!detail.isSuccess) return emptyList()
+
+        // PostgREST `id=in.(...)` sonuclari id sirasinda doner; bu yuzden 2. adimda
+        // hesaplanan "en son koleksiyona katilan" sirasi burada GERI KURULMALIDIR.
+        // (order=id.desc eklemek bu siralamayi tamamen bozar.)
+        val byId = decodeVehicles(detail.body).associateBy { it.id }
+        return topIds.mapNotNull { byId[it] }
     }
 
     // ------------------------------------------------------------------ //
