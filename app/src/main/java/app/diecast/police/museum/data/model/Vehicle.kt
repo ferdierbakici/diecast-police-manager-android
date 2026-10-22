@@ -15,8 +15,8 @@ data class NameRef(
 )
 
 /**
- * `vehicles` tablosunun mobil uygulama icin gereken kolonlari.
- * Foreign key'ler PostgREST `embed` ile gomulur (countries/manufacturers/vehicle_brands/series).
+ * The columns of the `vehicles` table the mobile app needs.
+ * Foreign keys are embedded via PostgREST `embed` (countries/manufacturers/vehicle_brands/series).
  */
 @Serializable
 data class Vehicle(
@@ -74,7 +74,7 @@ data class Vehicle(
     val brandName: String? get() = vehicleBrands?.name
     val seriesName: String? get() = series?.name
 
-    /** Gorsel onceligi: Cloudinary (CDN) > yerel dosya yolu. */
+    /** Image priority: Cloudinary (CDN) > local file path. */
     val imageUrl: String?
         get() = modelImageCdn?.takeIf { it.isNotBlank() }
             ?: modelImage?.takeIf { it.isNotBlank() && it.startsWith("http") }

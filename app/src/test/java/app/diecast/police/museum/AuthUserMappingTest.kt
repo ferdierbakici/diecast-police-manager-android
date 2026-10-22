@@ -8,19 +8,19 @@ import org.junit.Assert.assertNotNull
 import org.junit.Test
 
 /**
- * Oturum yanitlarindaki kullanici adi eslemesi.
+ * Tests the mapping of the user name in the session responses.
  *
- * Google OAuth `user_metadata.full_name` verir; Supabase yerel alan adi
- * (`display_name`) kullanici tarafindan ayarlanir.
+ * Google OAuth provides `user_metadata.full_name`; the Supabase local display
+ * name (`display_name`) is set by the user.
  *
- * Oncelik sirasi: display_name -> full_name -> name -> e-posta yerel adi.
+ * Priority order: display_name -> full_name -> name -> the local part of the email address.
  */
 class AuthUserMappingTest {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; explicitNulls = false }
 
     @Test
-    fun `google full_name kullanilir`() {
+    fun `the google full_name is used`() {
         val user = json.decodeFromString<AuthUser>(
             """{"id":"u1","email":"ferdi@example.com","user_metadata":{"full_name":"Ferdi Erbakici"}}"""
         )
@@ -28,15 +28,15 @@ class AuthUserMappingTest {
     }
 
     @Test
-    fun `display_name full_name'den onceliklidir`() {
+    fun `display_name has priority over full_name`() {
         val user = json.decodeFromString<AuthUser>(
-            """{"id":"u1","email":"ferdi@example.com","user_metadata":{"display_name":"Kullanici Adi","full_name":"Ferdi Erbakici"}}"""
+            """{"id":"u1","email":"ferdi@example.com","user_metadata":{"display_name":"Sample User","full_name":"Ferdi Erbakici"}}"""
         )
-        assertEquals("Kullanici Adi", user.displayName)
+        assertEquals("Sample User", user.displayName)
     }
 
     @Test
-    fun `google name alani kullanilir`() {
+    fun `the google name field is used`() {
         val user = json.decodeFromString<AuthUser>(
             """{"id":"u1","email":"ferdi@example.com","user_metadata":{"name":"Ferdi E"}}"""
         )
@@ -44,7 +44,7 @@ class AuthUserMappingTest {
     }
 
     @Test
-    fun `metadata yoksa e-posta yerel adi kullanilir`() {
+    fun `without metadata the local part of the email is used`() {
         val user = json.decodeFromString<AuthUser>(
             """{"id":"u1","email":"ferdi@example.com"}"""
         )
@@ -52,7 +52,7 @@ class AuthUserMappingTest {
     }
 
     @Test
-    fun `bos adlar e-posta yerel adina duser`() {
+    fun `blank names fall back to the local part of the email`() {
         val user = json.decodeFromString<AuthUser>(
             """{"id":"u1","email":"ferdi@example.com","user_metadata":{"display_name":"","full_name":"  "}}"""
         )
@@ -60,7 +60,7 @@ class AuthUserMappingTest {
     }
 
     @Test
-    fun `pkce token yanitinda kullanici bilgisi okunur`() {
+    fun `the user info is read from the pkce token response`() {
         val session = json.decodeFromString<AuthSession>(
             """{"access_token":"a","refresh_token":"r","expires_in":3600,"token_type":"bearer",
                "user":{"id":"u1","email":"ferdi@example.com","user_metadata":{"full_name":"Ferdi Erbakici"}}}"""

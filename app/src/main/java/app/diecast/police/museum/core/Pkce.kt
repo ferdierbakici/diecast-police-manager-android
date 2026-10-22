@@ -6,29 +6,29 @@ import java.security.SecureRandom
 import java.util.Base64
 
 /**
- * PKCE (RFC 7636) destegi.
+ * PKCE (RFC 7636) support.
  *
- * Neden PKCE? Native uygulama OAuth donusunde token'lari URL icinde tasir.
- * PKCE ile sunucu bize sadece tek kullanimlik bir `code` verir; token'i biz
- * urettigimiz `code_verifier` ile degistiririz. Boylece:
- *   - token URL'de (ve arac kayitlarinda) gecmez,
- *   - ele gecirilmis bir `code` tek basina kullanilamaz.
+ * Why PKCE? A native app carries the tokens inside the URL on the OAuth return.
+ * With PKCE the server gives us only a single-use `code`; we exchange it for
+ * the token using the `code_verifier` we generated. That way:
+ *   - the token never travels in the URL (nor in log records),
+ *   - a leaked `code` is useless on its own.
  *
- * Supabase tarafinda akis:
- *   1) BASLAT: GET /auth/v1/authorize?provider=google&redirect_to=...
+ * Flow on the Supabase side:
+ *   1) START: GET /auth/v1/authorize?provider=google&redirect_to=...
  *              &flow_type=pkce&code_challenge=<S256(verifier)>&code_challenge_method=s256
- *   2) DONUS:  diecastpolice://auth-callback?code=<code>
- *   3) DEGISTIR: POST /auth/v1/token?grant_type=pkce
+ *   2) RETURN: diecastpolice://auth-callback?code=<code>
+ *   3) EXCHANGE: POST /auth/v1/token?grant_type=pkce
  *                 { "auth_code": "<code>", "code_verifier": "<verifier>" }
  */
 object Pkce {
 
-    /** code_verifier 43-128 karakter olmali; 64 bayt -> 86 karakter (base64url). */
+    /** code_verifier must be 43-128 characters; 64 bytes -> 86 characters (base64url). */
     private const val VERIFIER_BYTES = 64
 
     private val secureRandom = SecureRandom()
 
-    /** Yeni, tahmin edilemez bir code_verifier uretir. */
+    /** Generates a new, unpredictable code_verifier. */
     fun newCodeVerifier(): String {
         val bytes = ByteArray(VERIFIER_BYTES)
         secureRandom.nextBytes(bytes)
@@ -43,11 +43,11 @@ object Pkce {
     }
 
     /**
-     * PKCE'li Supabase authorize URL'i.
+     * The Supabase authorize URL with PKCE.
      *
-     * `redirect_to` de URI olarak kodlanir (`diecastpolice://auth-callback` ->
-     * `diecastpolice%3A%2F%2Fauth-callback`); aksi halde ozel sema query
-     * ayraclariyla karisabilir.
+     * `redirect_to` is URI-encoded (`diecastpolice://auth-callback` ->
+     * `diecastpolice%3A%2F%2Fauth-callback`); otherwise the custom scheme
+     * may clash with the query separators.
      */
     fun authorizeUrl(authUrl: String, redirectUri: String, verifier: String): String =
         "$authUrl/authorize" +

@@ -10,9 +10,10 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Lenient serializer'larin JSON tiplerine gore dogru cozumledigini dogrular.
- * Canli veride ayni kolon farkli tiplerde donuyor (orn. `rating` sayı ya da metin,
- * `is_customized` boolean ya da metin) - bu serializer'lar olmadan cozumleme cokuyor.
+ * Verifies that the lenient serializers parse the JSON types correctly.
+ * In live data the same column comes back with different types (e.g. `rating` as a
+ * number or as text, `is_customized` as a boolean or as text) - without these
+ * serializers the parsing fails.
  */
 class LenientSerializerTest {
 
@@ -26,7 +27,7 @@ class LenientSerializerTest {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; explicitNulls = false }
 
     @Test
-    fun `dogru tipler dogru cozulur`() {
+    fun `the correct types are decoded correctly`() {
         val p = json.decodeFromString<Probe>("""{"b":false,"i":0,"s":"x"}""")
         assertEquals(false, p.b)
         assertEquals(0, p.i)
@@ -34,7 +35,7 @@ class LenientSerializerTest {
     }
 
     @Test
-    fun `null degerler null kalir`() {
+    fun `null values stay null`() {
         val p = json.decodeFromString<Probe>("""{"b":null,"i":null,"s":null}""")
         assertNull(p.b)
         assertNull(p.i)
@@ -42,7 +43,7 @@ class LenientSerializerTest {
     }
 
     @Test
-    fun `metin olarak gelen boolean'lar cozulur`() {
+    fun `booleans delivered as text are decoded`() {
         assertEquals(true, json.decodeFromString<Probe>("""{"b":"true"}""").b)
         assertEquals(false, json.decodeFromString<Probe>("""{"b":"false"}""").b)
         assertEquals(true, json.decodeFromString<Probe>("""{"b":"1"}""").b)
@@ -51,14 +52,14 @@ class LenientSerializerTest {
     }
 
     @Test
-    fun `metin olarak gelen sayilar cozulur`() {
+    fun `numbers delivered as text are decoded`() {
         assertEquals(5, json.decodeFromString<Probe>("""{"i":"5"}""").i)
         assertEquals(-3, json.decodeFromString<Probe>("""{"i":"-3"}""").i)
     }
 
     @Test
-    fun `cozumlenemeyen degerler null olur (uygulama cokmez)`() {
-        val p = json.decodeFromString<Probe>("""{"b":"belirsiz","i":"abc"}""")
+    fun `values that cannot be decoded become null (the app does not crash)`() {
+        val p = json.decodeFromString<Probe>("""{"b":"unknown","i":"abc"}""")
         assertNull(p.b)
         assertNull(p.i)
     }

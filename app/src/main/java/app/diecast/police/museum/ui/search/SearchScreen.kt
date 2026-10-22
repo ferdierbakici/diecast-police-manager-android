@@ -57,7 +57,7 @@ fun SearchScreen(
 
     val listState = rememberLazyListState()
 
-    // Sonsuz kaydirma: son ogelere yakinlasinca next sayiyi yukle.
+    // Infinite scroll: load the next page when the end is near.
     val shouldLoadMore by remember {
         derivedStateOf {
             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -71,7 +71,7 @@ fun SearchScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
 
-        // ---- Arama alani ----
+        // ---- Search field ----
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
             OutlinedTextField(
                 value = state.filters.search,
@@ -139,7 +139,7 @@ fun SearchScreen(
             }
         }
 
-        // ---- Sonuclar ----
+        // ---- Results ----
         Box(modifier = Modifier.weight(1f)) {
             when {
                 state.loading && state.results.isEmpty() -> LoadingState(label = "Searching...")

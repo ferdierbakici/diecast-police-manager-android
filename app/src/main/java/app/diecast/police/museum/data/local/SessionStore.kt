@@ -17,8 +17,8 @@ private val Context.sessionDataStore: DataStore<Preferences> by preferencesDataS
 )
 
 /**
- * Oturum kalici olarak saklanir (DataStore). Dosya yedekleme kuralindan cikarilmistir
- * (bkz. res/xml/backup_rules.xml) - cihaz yedegiyle token tasinmaz.
+ * The session is persisted (DataStore). It is excluded from the backup
+ * rules (see res/xml/backup_rules.xml) - the token never travels with a device backup.
  */
 class SessionStore(private val context: Context) {
 
@@ -33,9 +33,10 @@ class SessionStore(private val context: Context) {
         /**
          * PKCE `code_verifier`.
          *
-         * OAuth tarayicida (CustomTab) tamamlanirken uygulama arka planda kalir
-         * ve sistem tarafindan oldurulebilir. Verifier bellekte tutulursa donuste
-         * "dogrulama verisi bulunamadi" hatasi aliriz; bu yuzden kalici yazilir.
+         * While OAuth completes in the browser (CustomTab) the app stays in the
+         * background and the system may kill it. If the verifier only lived in
+         * memory we would get a "verification data not found" error on return,
+         * so it is written to persistent storage.
          */
         val PKCE_VERIFIER = stringPreferencesKey("pkce_code_verifier")
     }
@@ -74,14 +75,14 @@ class SessionStore(private val context: Context) {
         context.sessionDataStore.edit { it.clear() }
     }
 
-    /** PKCE dogrulama verisini kalici yazar (surec oldurulse bile korunsun). */
+    /** Persists the PKCE verifier (kept even if the process is killed). */
     suspend fun savePkceVerifier(verifier: String) {
         context.sessionDataStore.edit { prefs ->
             prefs[Keys.PKCE_VERIFIER] = verifier
         }
     }
 
-    /** Kayitli PKCE dogrulama verisini okur. */
+    /** Reads the stored PKCE verifier. */
     suspend fun readPkceVerifier(): String? {
         val value = context.sessionDataStore.data
             .map { prefs -> prefs[Keys.PKCE_VERIFIER] }
@@ -89,7 +90,7 @@ class SessionStore(private val context: Context) {
         return value?.takeIf { it.isNotBlank() }
     }
 
-    /** Kullanildiktan sonra PKCE dogrulama verisini siler (tek kullanimliktir). */
+    /** Deletes the PKCE verifier after it has been used (single use). */
     suspend fun clearPkceVerifier() {
         context.sessionDataStore.edit { prefs ->
             prefs.remove(Keys.PKCE_VERIFIER)

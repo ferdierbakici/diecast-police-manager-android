@@ -41,11 +41,11 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Google OAuth donusu: diecastpolice://auth-callback
+     * Google OAuth return: diecastpolice://auth-callback
      *
-     * PKCE akisinda donus `?code=...` ile gelir ve token degisimi yapilir.
-     * Eski (implicit) akisde token'lar `#access_token=...` fragment'inda gelir;
-     * geriye donuk uyum icin o yol da desteklenir.
+     * In the PKCE flow the return arrives as `?code=...` and the tokens are exchanged.
+     * The old (implicit) flow delivers the tokens in the `#access_token=...` fragment;
+     * that path is still supported for backward compatibility.
      */
     private fun handleOAuthRedirect(intent: Intent?, container: AppContainer) {
         val data = intent?.data ?: return
@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
             fragment = data.fragment
         ) ?: return
 
-        // --- PKCE: sunucu `?code=...` gonderir -------------------------------
+        // --- PKCE: the server sends `?code=...` -------------------------------
         if (redirect.hasCode) {
             lifecycleScope.launch {
                 when (val result = container.authRepository.exchangeCodeForSession(redirect.code!!)) {
@@ -70,13 +70,13 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        // --- Hata donusu: ?error=...&error_description=... ---------------------
+        // --- Error return: ?error=...&error_description=... ---------------------
         if (redirect.hasError) {
             container.authRepository.setAuthMessage(redirect.errorMessage())
             return
         }
 
-        // --- Implicit (eski akis): token'lar fragment'ta ---------------------
+        // --- Implicit (old flow): the tokens are in the fragment ---------------------
         if (!redirect.hasTokens) return
 
         lifecycleScope.launch {

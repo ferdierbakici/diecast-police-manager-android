@@ -55,7 +55,7 @@ class SearchViewModel(
         }
     }
 
-    /** Filtre panelindeki secimleri uygular. */
+    /** Applies the selections made in the filter panel. */
     fun applyFilters(filters: Filters) {
         _state.update { it.copy(filters = filters) }
         search()
@@ -142,7 +142,7 @@ class SearchViewModel(
     }
 }
 
-/** Filtre panelinde "Tumu" degeri disinda secim var mi? */
+/** Is there any selection other than "All" in the filter panel? */
 fun Filters.hasNonDefaultSelection(): Boolean =
     country != ALL || manufacturer != ALL || brand != ALL ||
         serviceGroup != ALL || service != ALL || status != ALL

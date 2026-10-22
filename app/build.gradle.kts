@@ -8,8 +8,8 @@ plugins {
 }
 
 /**
- * Release imzasi icin `keystore.properties` (repo disinda, gitignored).
- * Dosya yoksa release derlemesi debug imzasiyla yapilir (CI/CI uyumu).
+ * Release signing uses `keystore.properties` (outside the repo, gitignored).
+ * If the file is missing, the release build falls back to the debug signing key (CI friendly).
  */
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {

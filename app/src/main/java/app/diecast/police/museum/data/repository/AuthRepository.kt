@@ -37,8 +37,9 @@ class AuthRepository(
     val sessionFlow: Flow<Session?> = store.sessionFlow
 
     /**
-     * OAuth akisindan gelen mesaj (hata gibi). Ekranlar bunu izleyip gosterir.
-     * Deep link MainActivity uzerinden gelir; ekrana buradan tasinir.
+     * A message coming from the OAuth flow (an error, for example). The screens
+     * observe it and show it. It arrives as a deep link through MainActivity
+     * and is forwarded from there.
      */
     private val _authMessage = MutableStateFlow<String?>(null)
     val authMessage: StateFlow<String?> = _authMessage.asStateFlow()
@@ -47,15 +48,15 @@ class AuthRepository(
     fun consumeAuthMessage() { _authMessage.value = null }
 
     /**
-     * "Giris tamamlandi" olayi.
+     * The "sign-in completed" event.
      *
-     * Oturumun *durumundan* (session != null) giris *olayini* ayirt edemeyiz:
-     * oturum kalici olarak saklandigi icin her sayfa acilisinda zaten vardir ve
-     * akis null -> non-null gecisi yalnizca oturumun **yeni olustugu** anda
-     * olusur. Bu yuzden ayri bir olay akisi tutulur.
+     * The *state* of the session (session != null) cannot tell us about a sign-in
+     * *event*: the session is persisted, so it already exists on every screen open
+     * and the null -> non-null transition only happens when the session is
+     * **newly created**. That is why a separate event flow is kept.
      *
-     * `replay = 0`: olay, o an dinleyen ekran varsa teslim edilir; yoksa duser
-     * (ekran acilmadysa zaten navigate edilecek bir yer yoktur).
+     * `replay = 0`: the event is delivered if a screen is listening at that moment;
+     * otherwise it is dropped (if no screen is open there is nowhere to navigate to).
      */
     private val _signedInEvents = MutableSharedFlow<Session>(
         replay = 0,
@@ -69,7 +70,7 @@ class AuthRepository(
     }
 
     // ------------------------------------------------------------------ //
-    //  Giris / kayit
+    //  Sign in / sign up
     // ------------------------------------------------------------------ //
 
     suspend fun signIn(email: String, password: String): AuthResult {
@@ -91,7 +92,7 @@ class AuthRepository(
         return toResult(result, email)
     }
 
-    /** OAuth donusunden gelen token'lari oturuma cevirir. */
+    /** Turns the tokens returned by OAuth into a session. */
     suspend fun signInWithTokens(
         accessToken: String,
         refreshToken: String,
@@ -136,7 +137,7 @@ class AuthRepository(
         store.clear()
     }
 
-    /** Oturum token'ini gecerliyse dondurur; gecmisse yeniler. */
+    /** Returns the session token if it is still valid; refreshes it when it has expired. */
     suspend fun validToken(): String? {
         val session = store.sessionFlow.firstOrNull() ?: return null
         if (!session.isExpired()) return session.accessToken
@@ -161,12 +162,12 @@ class AuthRepository(
     }
 
     /**
-     * Google OAuth baslatma URL'i (PKCE akisi).
+     * The Google OAuth start URL (PKCE flow).
      *
-     * Uretilen `code_verifier` **kalici** olarak saklanir: OAuth tarayicida
-     * tamamlanirken uygulama arka planda kalir ve sistem tarafindan
-     * oldurulebilir. Verifier bellekte kalsaydi donuste "dogrulama verisi
-     * bulunamadi" hatasi alirdik.
+     * The generated `code_verifier` is stored **persistently**: while OAuth
+     * completes in the browser the app stays in the background and the system
+     * may kill it. If the verifier only lived in memory we would get a
+     * "verification data not found" error on return.
      */
     suspend fun googleOAuthUrl(): String {
         val verifier = Pkce.newCodeVerifier()
@@ -175,10 +176,10 @@ class AuthRepository(
     }
 
     /**
-     * PKCE donusu: Supabase `?code=...` gonderir; token degisimi yapilir.
+     * PKCE return: Supabase sends `?code=...`; the tokens are exchanged.
      *
-     * Not: dogrulama verisi tek kullanimliktir; basarili/başarisiz her
-     * denemeden sonra temizlenir.
+     * Note: the verification data is single use; it is cleared after every
+     * attempt, successful or not.
      */
     suspend fun exchangeCodeForSession(code: String): AuthResult {
         val verifier = store.readPkceVerifier()
@@ -215,7 +216,7 @@ class AuthRepository(
             Json.default.decodeFromString<AuthSession>(result.body)
         }.getOrNull() ?: return AuthResult.Failure("Could not read the session response.")
 
-        // E-posta dogrulama acikse session'siz gelir.
+        // When email confirmation is enabled the session arrives without one.
         val access = session.accessToken
         val refresh = session.refreshToken
         val userId = session.user?.id

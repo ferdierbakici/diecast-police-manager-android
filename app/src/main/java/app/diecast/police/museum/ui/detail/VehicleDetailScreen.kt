@@ -69,15 +69,15 @@ import app.diecast.police.museum.ui.theme.StatusCollection
 import app.diecast.police.museum.domain.Timestamps
 
 /**
- * Mobil detay ekrani.
+ * The mobile detail screen.
  *
- * Web'deki `VehicleDetailModal`in mobil sorunlari burada giderildi:
- *  - Gorsel 500-600px sabit yerine ekranin max %32'si
- *  - 2 sutunlu grid yerine tek sutun "Satir" listesi
- *  - 9px etiketler yerine min 13sp etiket / 15sp deger
- *  - p-10 ic bosluk yerine 16px
- *  - Kaydirma butun ekranda (sadece sag panelde degil)
- *  - Altta sabitlenen aksiyon cubugu
+ * The mobile problems of the web app's `VehicleDetailModal` are fixed here:
+ *  - Instead of a fixed 500-600px image, at most 32% of the screen
+ *  - Instead of a 2-column grid, a single column "Row" list
+ *  - Instead of 9px labels, at least 13sp labels / 15sp values
+ *  - Instead of p-10 inner padding, 16px
+ *  - The whole screen scrolls (not only the right panel)
+ *  - A fixed action bar at the bottom
  */
 @Composable
 fun VehicleDetailScreen(
@@ -171,7 +171,7 @@ private fun DetailContent(
                 .padding(top = contentPadding.calculateTopPadding())
                 .padding(bottom = contentPadding.calculateBottomPadding() + 12.dp)
         ) {
-            // ---------- Gorsel ----------
+            // ---------- Image ----------
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -186,7 +186,7 @@ private fun DetailContent(
                     imageWidth = 1200
                 )
 
-                // Geri tusu - gorselin uzerinde
+                // Back button - on top of the image
                 IconButton(
                     onClick = onBack,
                     modifier = Modifier
@@ -202,7 +202,7 @@ private fun DetailContent(
                 }
             }
 
-            // ---------- Baslik ----------
+            // ---------- Title ----------
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                 Text(
                     text = vehicle.modelName?.takeIf { it.isNotBlank() } ?: "Unnamed model",
@@ -234,7 +234,7 @@ private fun DetailContent(
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
-            // ---------- Detay satirlari ----------
+            // ---------- Detail rows ----------
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
 
                 DetailSection("Model Details") {

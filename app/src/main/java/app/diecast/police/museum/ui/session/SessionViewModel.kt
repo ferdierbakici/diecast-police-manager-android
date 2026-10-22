@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** Uygulama genelinde oturum durumu. */
+/** The session state for the whole app. */
 class SessionViewModel(
     private val authRepository: AuthRepository
 ) : ViewModel() {

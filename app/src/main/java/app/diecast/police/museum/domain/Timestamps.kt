@@ -5,10 +5,10 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
 /**
- * Web uygulamasindaki `a.status_changed_at || a.created_at || a.updated_at` cozumlemesiyle
- * ayni sonucu verir. Siralama "Recently in Collection" bolumunde kritik: PostgREST'in
- * cok kolonlu `order=` ile siralamasi web'in JS siralamasiyla ayni sonucu vermiyor,
- * bu yuzden aday listesi hafif cekilip burada siralanir.
+ * Produces the same result as the web app's `a.status_changed_at || a.created_at || a.updated_at`
+ * resolution. The sorting is critical for the "Recently in Collection" section: PostgREST's
+ * multi-column `order=` does not produce the same result as the web app's JS sorting,
+ * so the candidate list is fetched lightweight and sorted here.
  */
 object Timestamps {
 

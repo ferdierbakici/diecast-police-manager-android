@@ -64,7 +64,7 @@ private val TABS = listOf(
 @Composable
 fun MuseumApp() {
     val navController = rememberNavController()
-    // Oturum viewmodel'i burada ayakta tutulur (uygulama geneli).
+    // The session view model is kept alive here (app wide).
     val sessionViewModel: SessionViewModel = appViewModel { SessionViewModel(it.authRepository) }
     @Suppress("UNUSED_EXPRESSION")
     sessionViewModel
@@ -144,7 +144,7 @@ private fun NavHostController.navigateToTab(route: String) {
     }
 }
 
-/** Derin baglanti: diecastpolice://vehicle/123 -> detay ekrani. */
+/** Deep link: diecastpolice://vehicle/123 -> the detail screen. */
 @Composable
 private fun DeepLinkEffect(navController: NavHostController) {
     val context = LocalContext.current

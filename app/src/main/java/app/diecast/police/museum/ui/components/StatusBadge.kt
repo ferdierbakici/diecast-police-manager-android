@@ -21,7 +21,7 @@ import app.diecast.police.museum.ui.theme.StatusNeutralBg
 
 data class StatusStyle(val label: String, val fg: Color, val bg: Color)
 
-/** Web'deki `getStatusStyle` mantiginin mobil karsiligi. */
+/** The mobile counterpart of the web app's `getStatusStyle` logic. */
 fun statusStyle(rawStatus: String?): StatusStyle {
     val label = Status.displayLabel(rawStatus)
     return when (label) {

@@ -40,7 +40,7 @@ fun DiecastMuseumTheme(
     darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    // Muze paleti sabit: koyu tema bilincli olarak uygulanmiyor (site de sabit palet kullaniyor).
+    // The museum palette is fixed: a dark theme is deliberately not implemented (the site uses a fixed palette too).
     @Suppress("UNUSED_EXPRESSION")
     darkTheme
 

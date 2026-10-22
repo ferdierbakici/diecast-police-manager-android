@@ -33,7 +33,8 @@ import app.diecast.police.museum.ui.components.SelectField
 import app.diecast.police.museum.ui.theme.MuseumInkSoft
 
 /**
- * Alt panel filtre formu. Web'deki "Search Criteria" formunun mobil uyarlamasi.
+ * The filter form in a bottom sheet. The mobile adaptation of the
+ * "Search Criteria" form of the web app.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

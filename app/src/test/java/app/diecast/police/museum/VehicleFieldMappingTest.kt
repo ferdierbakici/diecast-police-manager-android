@@ -10,10 +10,11 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * SerialName denetimi: JSON anahtari ile Kotlin alani eslesmezse deger SESSIZCE null olur
- * (ornek: `isCustomized` icin `@SerialName("is_customized")` unutulmustu - bu test yakaladi).
+ * SerialName check: when a JSON key does not match the Kotlin field the value
+ * silently becomes null (example: `@SerialName("is_customized")` was missing for
+ * `isCustomized` - this test caught it).
  *
- * Burada canli fixture'daki her anahtarin modele gercekten doldugunu dogrulariz.
+ * Here we verify that every key in the live fixture really reaches the model.
  */
 class VehicleFieldMappingTest {
 
@@ -24,12 +25,12 @@ class VehicleFieldMappingTest {
             .bufferedReader(Charsets.UTF_8).use { it.readText() }
 
     @Test
-    fun `json'da dolu olan her alan modele de dolu yansimali`() {
+    fun `every field that is filled in the json is also filled in the model`() {
         val text = fixture("last_added.json")
         val array = Json.parseToJsonElement(text) as kotlinx.serialization.json.JsonArray
         val vehicles: List<Vehicle> = json.decodeFromString(text)
 
-        // Ilk kaydin ham JSON'u ile cozulen modeli karsilastir.
+        // Compare the raw JSON of the first record with the decoded model.
         val raw = array.first() as JsonObject
         val v = vehicles.first()
 
@@ -38,7 +39,7 @@ class VehicleFieldMappingTest {
             return el !is kotlinx.serialization.json.JsonNull
         }
 
-        // Alan adi -> (json anahtari, modele yansiyan deger null mu?)
+        // Field name -> (json key, does the value reach the model as null?)
         val checks: List<Triple<String, String, Boolean>> = listOf(
             Triple("model_name", "model_name", v.modelName != null),
             Triple("model_year", "model_year", v.modelYear != null),
@@ -52,7 +53,7 @@ class VehicleFieldMappingTest {
             Triple("currency", "currency", v.currency != null),
             Triple("acquisition_date", "acquisition_date", v.acquisitionDate != null),
             Triple("market_value", "market_value", v.marketValue != null),
-            // Asil hata buradaydi:
+            // The actual bug was here:
             Triple("is_customized", "is_customized", v.isCustomized != null),
             Triple("created_at", "created_at", v.createdAt != null),
             Triple("updated_at", "updated_at", v.updatedAt != null),
@@ -63,14 +64,14 @@ class VehicleFieldMappingTest {
 
         val mismatches = checks.filter { (_, key, mapped) -> rawIsNonNil(key) && !mapped }
         org.junit.Assert.assertTrue(
-            "Su alanlar JSON'da dolu ama modele yansimadi (SerialName eksik olabilir): " +
+            "These fields are filled in the JSON but did not reach the model (the SerialName may be missing): " +
                 mismatches.joinToString { it.first },
             mismatches.isEmpty()
         )
     }
 
     @Test
-    fun `embed alanlari modele doluyor`() {
+    fun `the embed fields reach the model`() {
         val v: Vehicle = json.decodeFromString<List<Vehicle>>(fixture("last_added.json")).first()
         assertNotNull("countries.name", v.countryName)
         assertNotNull("manufacturers.name", v.manufacturerName)
@@ -78,43 +79,43 @@ class VehicleFieldMappingTest {
     }
 
     @Test
-    fun `is_customized degeri false olarak cozulur`() {
+    fun `the is_customized value is decoded as false`() {
         val v: Vehicle = json.decodeFromString<List<Vehicle>>(fixture("last_added.json")).first()
         org.junit.Assert.assertEquals(false, v.isCustomized)
     }
 
     @Test
-    fun `tum fixture kayitlari ayni sekilde cozulur`() {
-        // 10 kaydin 10'unda da is_customized false olmali (hepsi ayni sekilde donuyor).
+    fun `all fixture records are decoded the same way`() {
+        // is_customized must be false in 10/10 records (they all come back the same way).
         val all: List<Vehicle> = json.decodeFromString(fixture("last_added.json"))
         org.junit.Assert.assertTrue(
-            "tum kayitlar is_customized=false cozulmeli",
+            "all records must be decoded as is_customized=false",
             all.all { it.isCustomized == false }
         )
     }
 
     // ------------------------------------------------------------------ //
-    //  Ozel yapimli arac (canli veriden id=4043)
+    //  Customized vehicle (from live data, id=4043)
     // ------------------------------------------------------------------ //
 
     @Test
-    fun `ozel yapimli arac cozulur ve is_customized true gelir`() {
+    fun `a customized vehicle is decoded and is_customized comes through as true`() {
         val v: Vehicle = json.decodeFromString<List<Vehicle>>(fixture("customized.json")).first()
 
         assertEquals(4043, v.id)
         assertEquals("Peugeot 403", v.modelName)
-        // model_year canli veride NULL - null kalmali
-        assertNull("model_year NULL olmali", v.modelYear)
+        // model_year is NULL in live data - it must stay null
+        assertNull("model_year must be NULL", v.modelYear)
 
-        // BU TEST, `@SerialName("is_customized")` eksikligini yakalayan testtir.
-        // SerialName yoksa isCustomized her zaman null kalir ve detay ekraninda
-        // "Ozel Yapim" bolumu hic gosterilmez.
-        assertEquals("is_customized true cozulmeli", true, v.isCustomized)
+        // THIS TEST is the one that catches a missing `@SerialName("is_customized")`.
+        // Without the SerialName, isCustomized always stays null and the
+        // "Customization" section never shows up on the detail screen.
+        assertEquals("is_customized must be decoded as true", true, v.isCustomized)
         assertEquals("customizer_name", "Diecast Police", v.customizerName)
     }
 
     @Test
-    fun `ozel yapimli olmayan arac false doner`() {
+    fun `a vehicle that is not customized returns false`() {
         val v: Vehicle = json.decodeFromString<List<Vehicle>>(fixture("last_added.json")).first()
         assertEquals(false, v.isCustomized)
     }

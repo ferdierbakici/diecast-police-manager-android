@@ -16,7 +16,7 @@ import app.diecast.police.museum.domain.Timestamps
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/** Sayim icin hafif kayit. */
+/** A lightweight record for the counts. */
 @Serializable
 private data class StatusPair(
     @SerialName("emergency_service") val emergencyService: String? = null,
@@ -34,7 +34,7 @@ class MuseumRepository(private val rest: RestClient) {
     private var cachedOptions: FilterOptions? = null
 
     // ------------------------------------------------------------------ //
-    //  Istatistikler
+    //  Statistics
     // ------------------------------------------------------------------ //
 
     suspend fun fetchStats(): Stats {
@@ -54,10 +54,10 @@ class MuseumRepository(private val rest: RestClient) {
     }
 
     // ------------------------------------------------------------------ //
-    //  Ana sayfa bolumleri
+    //  Home screen sections
     // ------------------------------------------------------------------ //
 
-    /** "Last 10 added models" - web ile ayni: order=id.desc (created_at degil). */
+    /** "Last 10 added models" - same as the web app: order=id.desc (not created_at). */
     suspend fun fetchLastAdded(limit: Int = 10): List<Vehicle> {
         val result = rest.get(
             path = "/vehicles",
@@ -71,11 +71,12 @@ class MuseumRepository(private val rest: RestClient) {
     }
 
     /**
-     * "Recently in Collection" - web ile birebir ayni 10 kayit.
+     * "Recently in Collection" - exactly the same 10 records as the web app.
      *
-     * 1) Sunucu tarafi `or` filtresiyle adaylar 1042 -> 74'e iner.
-     * 2) Siralama istemcide yapilir (PostgREST cok kolonlu order= web ile ayni sonucu vermiyor).
-     * 3) Secilen 10 id icin detayli kayitlar cekilir.
+     * 1) A server-side `or` filter narrows the candidates from 1042 to 74.
+     * 2) The sorting is done on the client (PostgREST's multi-column order= does
+     *    not produce the same result as the web app).
+     * 3) The detailed records of the selected 10 ids are fetched.
      */
     suspend fun fetchRecentlyInCollection(limit: Int = 10): List<Vehicle> {
         val collectionIn = Status.COLLECTION.joinToString(",")
@@ -112,15 +113,15 @@ class MuseumRepository(private val rest: RestClient) {
         )
         if (!detail.isSuccess) return emptyList()
 
-        // PostgREST `id=in.(...)` sonuclari id sirasinda doner; bu yuzden 2. adimda
-        // hesaplanan "en son koleksiyona katilan" sirasi burada GERI KURULMALIDIR.
-        // (order=id.desc eklemek bu siralamayi tamamen bozar.)
+        // PostgREST returns `id=in.(...)` results in id order; therefore the
+        // "most recently added to the collection" order computed in step 2 has to be
+        // RESTORED here. (Adding order=id.desc would completely break this ordering.)
         val byId = decodeVehicles(detail.body).associateBy { it.id }
         return topIds.mapNotNull { byId[it] }
     }
 
     // ------------------------------------------------------------------ //
-    //  Arama
+    //  Search
     // ------------------------------------------------------------------ //
 
     suspend fun searchVehicles(
@@ -128,7 +129,7 @@ class MuseumRepository(private val rest: RestClient) {
         page: Int = 0,
         pageSize: Int = 50
     ): PagedResult {
-        // Grup filtresi tum servis degerlerine ihtiyac duyar; secenekler yuklenmediyse once yukle.
+        // The group filter needs every service value, so load the options first if they are missing.
         if (cachedOptions == null) fetchFilterOptions()
         val params = buildSearchParams(filters, page, pageSize)
         val result = rest.get(
@@ -177,7 +178,7 @@ class MuseumRepository(private val rest: RestClient) {
             params["vehicle_brands.name"] = "eq.${filters.brand}"
         }
 
-        // Web mantigi: grup + servis birlikte seciliyse sadece servis uygulanir.
+        // Web logic: when a group and a service are both selected, only the service is applied.
         if (filters.service != ALL) {
             params["emergency_service"] = "eq.${filters.service}"
         } else if (filters.serviceGroup != ALL) {
@@ -200,7 +201,7 @@ class MuseumRepository(private val rest: RestClient) {
     }
 
     // ------------------------------------------------------------------ //
-    //  Detay
+    //  Detail
     // ------------------------------------------------------------------ //
 
     suspend fun fetchVehicle(id: Int): Vehicle? {
@@ -217,7 +218,7 @@ class MuseumRepository(private val rest: RestClient) {
     }
 
     // ------------------------------------------------------------------ //
-    //  Filtre secenekleri
+    //  Filter options
     // ------------------------------------------------------------------ //
 
     suspend fun fetchFilterOptions(forceRefresh: Boolean = false): FilterOptions {
@@ -276,16 +277,16 @@ class MuseumRepository(private val rest: RestClient) {
     private data class NameRow(val name: String? = null)
 
     // ------------------------------------------------------------------ //
-    //  Kullanici koleksiyonu / wishlist
+    //  User collection / wishlist
     // ------------------------------------------------------------------ //
 
     /**
-     * Kullanicinin koleksiyonu / wishlist'i.
+     * The user's collection / wishlist.
      *
-     * Iki adimda yapilir (ic ice embed yerine), cunku yalnizca canli veride
-     * dogrulanmis sorgu desenleri kullaniliyor:
-     *   1) user_model_status -> vehicle_id listesi
-     *   2) vehicles -> id=in.(...) ile detayli kayitlar (100'erli parcalar)
+     * Done in two steps (instead of a nested embed) because only query
+     * patterns verified against live data are used:
+     *   1) user_model_status -> list of vehicle_id values
+     *   2) vehicles -> detailed records with id=in.(...) (in chunks of 100)
      */
     suspend fun fetchUserVehicles(
         userId: String,
@@ -330,11 +331,11 @@ class MuseumRepository(private val rest: RestClient) {
     )
 
     /**
-     * Koleksiyona ekle / kaldir (status = "collection" | "wishlist" | null -> sil).
+     * Add / remove from the collection (status = "collection" | "wishlist" | null -> delete).
      *
-     * Web'in birebir ayni istegi: `on_conflict=user_id,vehicle_id` +
-     * `Prefer: resolution=merge-duplicates`. Yazma icin **kullanicinin JWT'si**
-     * gerekir; RLS anon yazmaya izin vermiyor (canli API'de dogrulandi:
+     * Exactly the same request as the web app: `on_conflict=user_id,vehicle_id` +
+     * `Prefer: resolution=merge-duplicates`. Writing requires the **user's JWT**;
+     * the RLS policy does not allow anon writes (verified against the live API:
      * 42501 "new row violates row-level security policy").
      */
     suspend fun setUserStatus(
@@ -358,7 +359,7 @@ class MuseumRepository(private val rest: RestClient) {
         }
     }
 
-    /** Kullanicinin bu arac icin mevcut durumu ("collection" | "wishlist" | null). */
+    /** The user's current status for this vehicle ("collection" | "wishlist" | null). */
     suspend fun fetchUserStatus(
         userId: String,
         vehicleId: Int,

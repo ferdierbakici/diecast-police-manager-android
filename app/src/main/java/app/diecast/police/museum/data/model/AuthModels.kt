@@ -6,15 +6,15 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class UserMetadata(
     /**
-     * Supabase yerel alan adı (kullanıcı kendi profili için ayarlar).
+     * The Supabase local display name (the user sets it for their own profile).
      */
     @SerialName("display_name") val displayName: String? = null,
     /**
-     * Google OAuth sağlayıcısının verdiği ad (örn. "Ferdi Erbakici").
+     * The name provided by Google OAuth (e.g. "Ferdi Erbakici").
      */
     @SerialName("full_name") val fullName: String? = null,
     /**
-     * Google'ın verdiği alternatif alan adı.
+     * The alternative display name provided by Google.
      */
     @SerialName("name") val name: String? = null
 )
@@ -26,10 +26,10 @@ data class AuthUser(
     @SerialName("user_metadata") val userMetadata: UserMetadata? = null
 ) {
     /**
-     * Gosterilecek ad.
+     * The name to display.
      *
-     * Oncelik: kullaniciya ait `display_name` -> Google `full_name` -> Google `name`
-     * -> e-posta yerel adi.
+     * Priority: the user's `display_name` -> Google `full_name` -> Google `name`
+     * -> the local part of the email address.
      */
     val displayName: String?
         get() = userMetadata?.displayName?.takeIf { it.isNotBlank() }
@@ -56,7 +56,7 @@ data class AuthErrorBody(
     @SerialName("error_code") val errorCode: String? = null
 )
 
-/** Oturum durumu - DataStore'a yazilir. */
+/** Session state - written to DataStore. */
 data class Session(
     val accessToken: String,
     val refreshToken: String,

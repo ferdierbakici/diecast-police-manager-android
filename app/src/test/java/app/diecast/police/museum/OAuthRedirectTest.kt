@@ -9,39 +9,39 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * OAuth donus adedi ayristirma testleri.
+ * Tests for parsing the OAuth return URL.
  *
- * Canli GoTrue v2.197.0 davranislari referans alindi:
- *   - PKCE donusu:  `diecastpolice://auth-callback?code=...`
- *   - Implicit:      `diecastpolice://auth-callback#access_token=...&refresh_token=...`
- *   - Hata donusu:   `diecastpolice://auth-callback?error=server_error&error_description=...`
+ * Based on the observed behaviour of the live GoTrue v2.197.0:
+ *   - PKCE return: `diecastpolice://auth-callback?code=...`
+ *   - Implicit:    `diecastpolice://auth-callback#access_token=...&refresh_token=...`
+ *   - Error:       `diecastpolice://auth-callback?error=server_error&error_description=...`
  */
 class OAuthRedirectTest {
 
     // ------------------------------------------------------------------ //
-    //  Adres eslesmesi
+    //  Address matching
     // ------------------------------------------------------------------ //
 
     @Test
-    fun `baska sema veya host reddedilir`() {
+    fun `another scheme or host is rejected`() {
         assertNull(OAuthRedirect.parse("https", "auth-callback", "?code=abc", null))
         assertNull(OAuthRedirect.parse("diecastpolice", "vehicle", "?code=abc", null))
         assertNull(OAuthRedirect.parse("diecastpolice", "other-host", "?code=abc", null))
     }
 
     @Test
-    fun `dogru sema ve host kabul edilir`() {
+    fun `the correct scheme and host are accepted`() {
         val r = OAuthRedirect.parse("diecastpolice", "auth-callback", "?code=abc", null)
         assertNotNull(r)
         assertEquals("abc", r?.code)
     }
 
     // ------------------------------------------------------------------ //
-    //  PKCE donusu
+    //  PKCE return
     // ------------------------------------------------------------------ //
 
     @Test
-    fun `PKCE query'den code okunur`() {
+    fun `the code is read from the PKCE query`() {
         val r = OAuthRedirect.parse(
             "diecastpolice", "auth-callback",
             "?code=abc123XYZ&sb=12345", null
@@ -52,18 +52,18 @@ class OAuthRedirectTest {
     }
 
     @Test
-    fun `code bos ise hasCode false`() {
+    fun `hasCode is false when the code is empty`() {
         val r = OAuthRedirect.parse("diecastpolice", "auth-callback", "?code=", null)!!
         assertFalse(r.hasCode)
         assertNull(r.code)
     }
 
     // ------------------------------------------------------------------ //
-    //  Implicit donusu
+    //  Implicit return
     // ------------------------------------------------------------------ //
 
     @Test
-    fun `implicit fragment'tan token'lar okunur`() {
+    fun `the tokens are read from the implicit fragment`() {
         val r = OAuthRedirect.parse(
             "diecastpolice", "auth-callback",
             null,
@@ -77,7 +77,7 @@ class OAuthRedirectTest {
     }
 
     @Test
-    fun `refresh_token yoksa hasTokens false`() {
+    fun `hasTokens is false without a refresh_token`() {
         val r = OAuthRedirect.parse(
             "diecastpolice", "auth-callback", null, "#access_token=AT_123"
         )!!
@@ -85,7 +85,7 @@ class OAuthRedirectTest {
     }
 
     @Test
-    fun `expires_in okunamazsa null`() {
+    fun `expires_in is null when it cannot be read`() {
         val r = OAuthRedirect.parse(
             "diecastpolice", "auth-callback", null, "#access_token=A&refresh_token=R&expires_in=abc"
         )!!
@@ -93,51 +93,51 @@ class OAuthRedirectTest {
     }
 
     // ------------------------------------------------------------------ //
-    //  Hata donusu
+    //  Error return
     // ------------------------------------------------------------------ //
 
     @Test
-    fun `hata query'den okunur`() {
+    fun `the error is read from the query`() {
         val r = OAuthRedirect.parse(
             "diecastpolice", "auth-callback",
             "?error=server_error&error_description=Unable+to+exchange+external+code", null
         )!!
         assertTrue(r.hasError)
         assertEquals("server_error", r.error)
-        // Query yaziminda '+' bosluktur
+        // In query notation '+' is a space
         assertEquals("Unable to exchange external code", r.errorDescription)
     }
 
     @Test
-    fun `hata fragment'tan okunur`() {
+    fun `the error is read from the fragment`() {
         val r = OAuthRedirect.parse(
             "diecastpolice", "auth-callback", null,
             "#error=access_denied&error_description=User+denied"
         )!!
         assertTrue(r.hasError)
         assertEquals("access_denied", r.error)
-        // Fragment'ta '+' gercek plus isareti olarak kalir
+        // In a fragment '+' stays a literal plus sign
         assertEquals("User+denied", r.errorDescription)
     }
 
     @Test
-    fun `hata mesaji description yoksa varsayilan`() {
+    fun `the error message falls back to a default without a description`() {
         val r = OAuthRedirect.parse("diecastpolice", "auth-callback", "?error=access_denied", null)!!
         assertEquals("Sign-in failed (access_denied).", r.errorMessage())
     }
 
     @Test
-    fun `hata yoksa errorMessage null`() {
+    fun `errorMessage is null when there is no error`() {
         val r = OAuthRedirect.parse("diecastpolice", "auth-callback", "?code=abc", null)!!
         assertNull(r.errorMessage())
     }
 
     // ------------------------------------------------------------------ //
-    //  Query / fragment kodlama
+    //  Query / fragment encoding
     // ------------------------------------------------------------------ //
 
     @Test
-    fun `yuzde kodlamasi cozulur`() {
+    fun `the percent encoding is decoded`() {
         val r = OAuthRedirect.parse(
             "diecastpolice", "auth-callback",
             "?error_description=Kod%20%C3%87%C3%B6z%C3%BCld%C3%BC", null
@@ -146,7 +146,7 @@ class OAuthRedirectTest {
     }
 
     @Test
-    fun `cok baytli utf8 karakterler cozulur`() {
+    fun `the multi byte utf8 characters are decoded`() {
         // "s" = U+015F (C5 9F), "u" = U+00FC (C3 BC)
         val r = OAuthRedirect.parse(
             "diecastpolice", "auth-callback",
@@ -156,7 +156,7 @@ class OAuthRedirectTest {
     }
 
     @Test
-    fun `onceki ve sonraki isaretler temizlenir`() {
+    fun `the leading and trailing markers are stripped`() {
         val withPrefix = OAuthRedirect.parseParams("?a=1&b=2", plusAsSpace = true)
         val withHash = OAuthRedirect.parseParams("#a=1&b=2", plusAsSpace = true)
         val plain = OAuthRedirect.parseParams("a=1&b=2", plusAsSpace = true)
@@ -165,7 +165,7 @@ class OAuthRedirectTest {
     }
 
     @Test
-    fun `degeri olmayan parametre atlanir`() {
+    fun `a parameter without a value is skipped`() {
         val p = OAuthRedirect.parseParams("a=1&flag&b=2", plusAsSpace = true)
         assertEquals(2, p.size)
         assertEquals("1", p["a"])
@@ -174,7 +174,7 @@ class OAuthRedirectTest {
     }
 
     @Test
-    fun `bos girdi bos map doner`() {
+    fun `an empty input returns an empty map`() {
         assertTrue(OAuthRedirect.parseParams(null, plusAsSpace = true).isEmpty())
         assertTrue(OAuthRedirect.parseParams("", plusAsSpace = true).isEmpty())
         assertTrue(OAuthRedirect.parseParams("?", plusAsSpace = true).isEmpty())
@@ -182,14 +182,14 @@ class OAuthRedirectTest {
     }
 
     @Test
-    fun `deger bos string olarak kalir`() {
+    fun `an empty value stays an empty string`() {
         val p = OAuthRedirect.parseParams("a=", plusAsSpace = true)
         assertEquals("", p["a"])
     }
 
     @Test
-    fun `query onceliklidir fragment'a gore`() {
-        // Ikisi de code iceriyorsa query (PKCE) kazanir
+    fun `the query has priority over the fragment`() {
+        // If both contain a code, the query (PKCE) wins
         val r = OAuthRedirect.parse(
             "diecastpolice", "auth-callback", "?code=QUERY", "#code=FRAGMENT"
         )!!

@@ -4,8 +4,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * "Recently in Collection" bolumunun 1. adiminda cekilen hafif kayit.
- * Siralama istemcide yapildigi icin sadece zaman damgalari ve id tasinir.
+ * A lightweight record fetched in step 1 of the "Recently in Collection" section.
+ * Because the sorting happens on the client, only timestamps and the id are carried.
  */
 @Serializable
 data class StatusCandidate(

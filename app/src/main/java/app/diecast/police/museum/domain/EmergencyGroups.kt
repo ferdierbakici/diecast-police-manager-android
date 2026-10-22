@@ -1,8 +1,8 @@
 package app.diecast.police.museum.domain
 
 /**
- * Web uygulamasindaki `getEmergencyServiceGroup` fonksiyonunun birebir karsiligi.
- * Kaynak: src/app/page.tsx:61-87
+ * An exact copy of the `getEmergencyServiceGroup` function of the web app.
+ * Source: src/app/page.tsx:61-87
  */
 object EmergencyGroups {
 

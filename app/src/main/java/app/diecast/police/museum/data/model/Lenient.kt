@@ -11,8 +11,9 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * Postgres "int" kolonlari bazi satirlarda JSON sayi, bazi satirlarda metin olarak gelebilir.
- * Bu serilestiriciler her ikisini de kabul eder; cozumleme hatasinda tum sayfa cokmez.
+ * Postgres "int" columns can come back as a JSON number on some rows and as
+ * text on others. These serializers accept both, so a parsing error never
+ * takes down the whole screen.
  */
 object LenientInt : KSerializer<Int?> {
     override val descriptor: SerialDescriptor =

@@ -27,7 +27,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Supabase OAuth donusu: diecastpolice://auth-callback -->
+            <!-- Supabase OAuth return: diecastpolice://auth-callback -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -35,7 +35,7 @@
                 <data android:scheme="diecastpolice" android:host="auth-callback" />
             </intent-filter>
 
-            <!-- Web sitesinden app'e dogrudan arac acma: diecastpolice://vehicle/123 -->
+            <!-- Opening a vehicle directly from the web site: diecastpolice://vehicle/123 -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

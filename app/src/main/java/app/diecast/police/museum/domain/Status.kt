@@ -1,12 +1,12 @@
 package app.diecast.police.museum.domain
 
 /**
- * Web uygulamasindaki `getStatusDisplayLabel` / `getStatusFilterValues` mantiginin
- * birebir karsiligi. Kaynak: src/app/components/vehicle-types.tsx + src/app/page.tsx
+ * An exact copy of the `getStatusDisplayLabel` / `getStatusFilterValues` logic
+ * of the web app. Source: src/app/components/vehicle-types.tsx + src/app/page.tsx
  */
 object Status {
 
-    /** Web'deki "All" gondericisi (data/model/Filters.kt ile ayni deger). */
+    /** The "All" sender of the web app (same value as data/model/Filters.kt). */
     private const val ALL_VALUE = "All"
 
     val COLLECTION = listOf("Available", "Available - Displayed", "In Stock", "Collection")
@@ -15,7 +15,7 @@ object Status {
     private val collectionLower = COLLECTION.map { it.lowercase() }
     private val missingLower = MISSING.map { it.lowercase() }
 
-    /** Gorunen etiket: Collection / Missing / digerleri kendi adiyla. */
+    /** The visible label: Collection / Missing / everything else keeps its own name. */
     fun displayLabel(status: String?): String {
         val normalized = status?.trim()?.lowercase().orEmpty()
         if (normalized.isEmpty()) return "Missing"
@@ -27,8 +27,8 @@ object Status {
     }
 
     /**
-     * Filtreye gidecek ham durum degerleri.
-     * Web `getStatusFilterValues` ile birebir: "All" -> [] (filtre uygulanmaz).
+     * The raw status values that go into the filter.
+     * Exactly as in the web app's `getStatusFilterValues`: "All" -> [] (no filter applied).
      */
     fun filterValues(status: String?): List<String> {
         val normalized = status?.trim().orEmpty()
@@ -40,7 +40,7 @@ object Status {
         }
     }
 
-    /** Koleksiyonda sayilan durumlar ("Recently in Collection" bolumu icin). */
+    /** The statuses counted as "in the collection" (for the "Recently in Collection" section). */
     fun isCollectionStatus(status: String?): Boolean =
         status?.trim()?.lowercase()?.let { collectionLower.any { v -> v == it } } == true
 }

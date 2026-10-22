@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.dp
 import app.diecast.police.museum.ui.theme.MuseumInkSoft
 
 /**
- * Etiketli secim alani. Uzun listeler (245 ulke, 684 uretici) icin
- * aranabilir bir dialog acar.
+ * A labelled select field. For long lists (245 countries, 684 manufacturers)
+ * it opens a searchable dialog.
  */
 @Composable
 fun SelectField(

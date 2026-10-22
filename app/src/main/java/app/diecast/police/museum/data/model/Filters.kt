@@ -16,7 +16,7 @@ data class Filters(
             country == ALL && manufacturer == ALL && brand == ALL &&
             serviceGroup == ALL && service == ALL && status == ALL
 
-    /** Web uygulamasindaki "Apply Filters" mantigi: en az bir kriter secilmeli. */
+    /** The "Apply Filters" logic of the web app: at least one criterion must be selected. */
     val hasCriteria: Boolean get() = !isEmpty
 
     fun cleared() = Filters(search = search)
@@ -37,7 +37,7 @@ data class Stats(
     val brands: Int = 0
 )
 
-/** Sayfali arama sonucu. */
+/** A page of search results. */
 data class PagedResult(
     val items: List<Vehicle> = emptyList(),
     val total: Int = 0,

@@ -7,8 +7,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * Mobil okunabilirlik icin minimum 12sp etiket / 15sp govde.
- * Web'deki 9px etiketler mobilde okunamaz diye burada minimumlar yukseltildi.
+ * A minimum of 12sp labels / 15sp body for mobile readability.
+ * The 9px labels of the web app are unreadable on mobile, so the minimums were raised.
  */
 val MuseumTypography = Typography(
     displaySmall = TextStyle(

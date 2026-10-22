@@ -12,7 +12,7 @@ val LocalAppContainer = staticCompositionLocalOf<AppContainer> {
     error("AppContainer not found - MuseumApp.onCreate must run first")
 }
 
-/** Container'dan ViewModel uretir. */
+/** Creates a ViewModel from the container. */
 @Composable
 inline fun <reified VM : ViewModel> appViewModel(
     crossinline create: (AppContainer) -> VM

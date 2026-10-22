@@ -8,18 +8,18 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * "Koleksiyona son katilanlar" bolumunun SIRA garantisi.
+ * Guarantees the ORDER of the "Recently in Collection" section.
  *
- * Bu bolum 2 adimda calisir:
- *   1) hafif aday listesi cekilir ve istemcide zamana gore siralanir -> topIds
- *   2) topIds icin detayli kayitlar cekilir
+ * This section runs in two steps:
+ *   1) a lightweight candidate list is fetched and sorted by time on the client -> topIds
+ *   2) the detailed records for topIds are fetched
  *
- * 2. adimda PostgREST sonuclari id sirasinda dondurur (order=id.desc eklenirse
- * tamamen farkli bir sira gelir). Bu yuzden 1. adimda hesaplanan sira
- * 2. adimdan sonra GERI KURULMALIDIR. Bu test o geri kurma mantigini dogrular.
+ * In step 2 PostgREST returns the rows in id order (adding order=id.desc
+ * produces a completely different order). Therefore the order computed in
+ * step 1 has to be RESTORED after step 2. This test verifies that restore logic.
  *
- * Regresyon: `order=id.desc` eklenmesi bu bolumu 10/10 kayitta yanlis siraya
- * sokuyordu.
+ * Regression: adding `order=id.desc` put this section in the wrong order
+ * for 10/10 records.
  */
 class RecentlyInCollectionOrderTest {
 
@@ -29,10 +29,10 @@ class RecentlyInCollectionOrderTest {
         javaClass.classLoader!!.getResourceAsStream("fixtures/$name")!!
             .bufferedReader(Charsets.UTF_8).use { it.readText() }
 
-    /** Web uygulamasinin canli referansi (birim testinde de dogrulanmistir). */
+    /** The live reference of the web app (also verified in a unit test). */
     private val expectedOrder = listOf(3846, 5684, 5683, 5714, 5695, 5688, 2192, 5496, 5485, 2195)
 
-    /** 1. adim: adaylari zamana gore sirala, ilk N id'yi al. */
+    /** Step 1: sort the candidates by time and take the first N ids. */
     private fun topIds(limit: Int): List<Int> =
         json.decodeFromString<List<StatusCandidate>>(fixture("recent_candidates.json"))
             .sortedWith(
@@ -44,51 +44,51 @@ class RecentlyInCollectionOrderTest {
             .map { it.id }
 
     @Test
-    fun `1 adim aday siralamasi web referansi ile birebir ayni`() {
+    fun `step 1 the candidate order is exactly the same as the web reference`() {
         assertEquals(expectedOrder, topIds(10))
     }
 
     @Test
-    fun `2 adimda PostgREST id sirasinda dondurur - bu yuzden geri kurma sart`() {
-        // Detay yaniti id'ye gore artan sirada gelir (order YOK)...
+    fun `in step 2 PostgREST returns the rows in id order - that is why the restore is required`() {
+        // The detail response arrives in ascending id order (NO order)...
         val raw: List<Vehicle> = json.decodeFromString(fixture("recent_detail.json"))
         val apiOrder = raw.map { it.id }
         assertEquals(
-            "detay yanitinin ham sirasi id'ye gore artan olmali",
+            "the raw order of the detail response must be ascending by id",
             apiOrder.sorted(),
             apiOrder
         )
-        // ...ve bu sira beklenen siradan FARKLIDIR.
+        // ...and this order differs from the expected one.
         assertEquals(
-            "ham API sirasi beklenen siradan farkli olmali (aksi halde test anlamsiz)",
+            "the raw API order must differ from the expected order (otherwise the test is meaningless)",
             false,
             apiOrder == expectedOrder
         )
     }
 
     @Test
-    fun `geri kurma mantigi dogru sirayi uretir`() {
-        // Repository'nin yaptigi: topIds sirasina gore esle ve mapNotNull ile topla.
+    fun `the restore logic produces the correct order`() {
+        // What the repository does: match by the order of topIds and collect with mapNotNull.
         val byId = json.decodeFromString<List<Vehicle>>(fixture("recent_detail.json"))
             .associateBy { it.id }
 
         val result = topIds(10).mapNotNull { byId[it] }
 
-        assertEquals("10 kayit da eslesmeli", 10, result.size)
+        assertEquals("all 10 records must match", 10, result.size)
         assertEquals(
-            "ekranda gorunen sira web referansiyla ayni olmali",
+            "the order shown on the screen must be the same as the web reference",
             expectedOrder,
             result.map { it.id }
         )
     }
 
     @Test
-    fun `geri kurma sonrasi her kayit dogru araca karsilik gelir`() {
+    fun `after the restore every record maps to the right vehicle`() {
         val byId = json.decodeFromString<List<Vehicle>>(fixture("recent_detail.json"))
             .associateBy { it.id }
         val result = topIds(10).mapNotNull { byId[it] }
 
-        // Ilk 3 kaydin beklenen adlari (canli veriden dogrulandi).
+        // The expected names of the first 3 records (verified against live data).
         assertEquals(3846, result[0].id)
         assertEquals("Fiat 1100E", result[0].modelName)
         assertEquals(5684, result[1].id)
@@ -98,20 +98,20 @@ class RecentlyInCollectionOrderTest {
     }
 
     @Test
-    fun `siralamanin TERSI olsaydi (order=id desc) 10 kaydin 10u yanlis olurdu`() {
-        // Regresyonun kaniti: eski kod `order=id.desc` kullaniyordu.
+    fun `if the order were REVERSED (order=id desc) all 10 records would be wrong`() {
+        // Proof of the regression: the old code used `order=id.desc`.
         val byId = json.decodeFromString<List<Vehicle>>(fixture("recent_detail.json"))
             .associateBy { it.id }
         val top = topIds(10)
-        val oldBuggyOrder = top.sortedDescending()          // order=id.desc'in etkisi
+        val oldBuggyOrder = top.sortedDescending()          // The effect of order=id.desc
         val correctOrder = top
 
         assertEquals(
-            "eski davranis ile dogru davranis 10 kaydin TAMAMINDA farkli olmali",
+            "the old behaviour and the correct behaviour must differ for ALL 10 records",
             10,
             oldBuggyOrder.zip(correctOrder).count { (a, b) -> a != b }
         )
-        // byId eslesmesi hala calisiyor; sorun sadece siradaydi.
+        // The byId matching still works; the problem was only the order.
         assertEquals(10, oldBuggyOrder.count { byId.containsKey(it) })
     }
 }

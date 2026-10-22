@@ -27,7 +27,7 @@ class VehicleDetailViewModel(
         val loading: Boolean = true,
         val error: String? = null,
         val vehicle: Vehicle? = null,
-        /** Kullanicinin bu arac icin durumu: "collection" | "wishlist" | null */
+        /** The user's status for this vehicle: "collection" | "wishlist" | null */
         val myStatus: String? = null,
         val collectionCount: Int = 0,
         val wishlistCount: Int = 0,
@@ -87,7 +87,7 @@ class VehicleDetailViewModel(
         _state.update { it.copy(myStatus = status) }
     }
 
-    /** Koleksiyon / wishlist dugmesi. */
+    /** The collection / wishlist button. */
     fun toggle(target: String) {
         val current = _state.value
         val vehicle = current.vehicle ?: return

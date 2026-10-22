@@ -11,7 +11,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 
-/** Ham HTTP sonucu. */
+/** Raw HTTP result. */
 data class HttpResult(
     val code: Int,
     val body: String,
@@ -19,7 +19,7 @@ data class HttpResult(
 ) {
     val isSuccess: Boolean get() = code in 200..299
 
-    /** PostgREST `Prefer: count=exact` icin `Content-Range: 0-49/1489` -> 1489 */
+    /** For PostgREST `Prefer: count=exact`: `Content-Range: 0-49/1489` -> 1489 */
     val totalCount: Int
         get() = headers.entries.firstOrNull { it.key.equals("Content-Range", true) }
             ?.value?.substringAfterLast('/')?.trim()?.toIntOrNull() ?: 0
@@ -35,8 +35,8 @@ data class HttpResult(
 }
 
 /**
- * Minimal PostgREST + GoTrue istemcisi.
- * Supabase-js yerine dogrudan REST cagrilari; boylece mobilde de ayni sozlesme kullanilir.
+ * A minimal PostgREST + GoTrue client.
+ * Direct REST calls instead of supabase-js, so mobile uses the same contract.
  */
 class RestClient(private val http: OkHttpClient) {
 
@@ -55,7 +55,7 @@ class RestClient(private val http: OkHttpClient) {
         http.newCall(request).execute().toResult()
     }
 
-    /** Mutlak URL'e GET (GoTrue /auth/v1/user gibi PostgREST disi uc noktalar icin). */
+    /** GET on an absolute URL (for non-PostgREST endpoints such as GoTrue /auth/v1/user). */
     suspend fun getAbsolute(
         url: String,
         token: String? = null,

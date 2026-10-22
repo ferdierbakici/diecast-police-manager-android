@@ -59,22 +59,22 @@ fun LoginScreen(
     var displayName by remember { mutableStateOf("") }
     var registerMode by remember { mutableStateOf(false) }
 
-    // Ekran acildiginda oturum var miydi? (OAuth donusu tetiklemeli)
+    // Was there a session when the screen opened? (the OAuth return must trigger it)
     //
-    // NOT: Oturumun varligi "giris olayini" tespit etmek icin kullanilamaz:
-    // oturum kalici olarak saklandigi icin her ekran acilisinda zaten vardir.
-    // Oturum yeni olustugunda "signedInEvents" olayi yayinlanir; ona bakilir.
+    // NOTE: The presence of a session cannot be used to detect the "sign-in event":
+    // the session is persisted, so it already exists on every screen open.
+    // When a new session is created the "signedInEvents" event is published; we watch that.
     LaunchedEffect(Unit) {
         viewModel.signedInEvents.collect { onSignedIn() }
     }
 
-    // Deep link ile gelen hata mesaji
+    // Error message arriving through the deep link
     LaunchedEffect(authMessage) {
         val message = authMessage ?: return@LaunchedEffect
         viewModel.showAuthMessage(message)
     }
 
-    // Google OAuth: URL uretildikten sonra tarayici (CustomTab) acilir.
+    // Google OAuth: once the URL is generated the browser (CustomTab) is opened.
     LaunchedEffect(googleUrl) {
         val url = googleUrl ?: return@LaunchedEffect
         val intent = CustomTabsIntent.Builder().build()
@@ -92,7 +92,7 @@ fun LoginScreen(
     ) {
         val activeSession = session
         if (activeSession != null) {
-            // --- Giris yapilmis: hesap bilgisi -----------------------------
+            // --- Signed in: account info -----------------------------
             Text(
                 text = "My Account",
                 style = MaterialTheme.typography.headlineMedium,

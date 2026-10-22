@@ -2,7 +2,7 @@ package app.diecast.police.museum.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Web sitesinin paleti: krem zemin, koyu murekkep metin, altin vurgu.
+// The palette of the website: cream background, dark ink text, gold accent.
 val MuseumCream = Color(0xFFFDF6E3)
 val MuseumCreamDark = Color(0xFFF3E7CB)
 val MuseumInk = Color(0xFF433422)
@@ -12,7 +12,7 @@ val MuseumGoldSoft = Color(0xFFE8C766)
 val MuseumBorder = Color(0xFFE2D3AE)
 val MuseumSurface = Color(0xFFFFFDF6)
 
-// Durum rozetleri
+// Status badges
 val StatusCollection = Color(0xFF2E7D52)
 val StatusCollectionBg = Color(0xFFDDF0E4)
 val StatusMissing = Color(0xFF8C6D1F)

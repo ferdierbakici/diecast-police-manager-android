@@ -1,14 +1,15 @@
 package app.diecast.police.museum.core
 
 /**
- * OAuth donus adresinin ayristirilmasi.
+ * Parsing of the OAuth return URL.
  *
- * Supabase farkli akislarda farkli yerlere parametre koyar:
+ * Supabase puts the parameters in different places depending on the flow:
  *   - PKCE     : `diecastpolice://auth-callback?code=...`   (query)
  *   - Implicit : `diecastpolice://auth-callback#access_token=...` (fragment)
- *   - Hata     : `diecastpolice://auth-callback?error=...&error_description=...`
+ *   - Error    : `diecastpolice://auth-callback?error=...&error_description=...`
  *
- * Bu tip bilerek Android'e bagli degildir; saf Kotlin'de test edilebilir.
+ * This type is deliberately free of Android dependencies so that it can be
+ * tested in plain Kotlin.
  */
 data class OAuthRedirect(
     val code: String? = null,
@@ -18,16 +19,16 @@ data class OAuthRedirect(
     val error: String? = null,
     val errorDescription: String? = null
 ) {
-    /** PKCE donusu: sunucu `?code=` gonderir, token degisimi gerekir. */
+    /** PKCE return: the server sends `?code=`, so the tokens have to be exchanged. */
     val hasCode: Boolean get() = !code.isNullOrBlank()
 
-    /** Implicit donusu: token'lar fragment'ta gelir. */
+    /** Implicit return: the tokens arrive in the fragment. */
     val hasTokens: Boolean
         get() = !accessToken.isNullOrBlank() && !refreshToken.isNullOrBlank()
 
     val hasError: Boolean get() = !error.isNullOrBlank()
 
-    /** Kullaniciya gosterilecek hata metni. */
+    /** The error text shown to the user. */
     fun errorMessage(): String? {
         if (!hasError) return null
         return errorDescription?.takeIf { it.isNotBlank() } ?: "Sign-in failed ($error)."
@@ -39,12 +40,12 @@ data class OAuthRedirect(
         const val HOST = "auth-callback"
 
         /**
-         * Donus adresini ayristirir.
+         * Parses the return URL.
          *
-         * @param scheme adresin semasi (or. "diecastpolice")
-         * @param host adresin sunucusu (or. "auth-callback")
-         * @param query adresin query kisimi (or. "?code=...")
-         * @param fragment adresin fragment kismi (or. "#access_token=...")
+         * @param scheme the scheme of the URL (e.g. "diecastpolice")
+         * @param host the host of the URL (e.g. "auth-callback")
+         * @param query the query part of the URL (e.g. "?code=...")
+         * @param fragment the fragment part of the URL (e.g. "#access_token=...")
          */
         fun parse(
             scheme: String?,
@@ -56,7 +57,7 @@ data class OAuthRedirect(
 
             val q = parseParams(query, plusAsSpace = true)
             val f = parseParams(fragment, plusAsSpace = false)
-            // Query onceliklidir; fragment yalnizca eksikleri tamamlar.
+            // The query takes priority; the fragment only fills in what is missing.
             val all = f + q
 
             return OAuthRedirect(
@@ -72,8 +73,8 @@ data class OAuthRedirect(
         /**
          * "a=1&b=2" -> map.
          *
-         * [plusAsSpace] true ise `+` bosluk olarak yorumlanir (query yazimi).
-         * Fragment'ta `+` gercek bir plus isareti oldugu icin false verilir.
+         * When [plusAsSpace] is true, `+` is read as a space (query notation).
+         * In a fragment `+` is a literal plus sign, so false is passed there.
          */
         fun parseParams(raw: String?, plusAsSpace: Boolean): Map<String, String> {
             if (raw.isNullOrBlank()) return emptyMap()
@@ -89,7 +90,7 @@ data class OAuthRedirect(
             }.toMap()
         }
 
-        /** Yuzde kodlamasini cozer (tanimlanmis karakterler haric harf/rakam korunur). */
+        /** Decodes percent encoding (letters/digits are kept as-is). */
         private fun percentDecode(value: String): String {
             if (!value.contains('%') && !value.contains('+')) return value
             val bytes = java.io.ByteArrayOutputStream(value.length)

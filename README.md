@@ -1,98 +1,101 @@
 # Diecast Police Museum — Android
 
-Dünya genelindeki diecast polis araçları koleksiyonunun **native Android uygulaması**.
+The **native Android app** for the worldwide collection of diecast police vehicles.
 
-Kotlin + Jetpack Compose ile yazılmıştır. Backend yoktur; uygulama doğrudan
-Supabase PostgREST + GoTrue API'lerine `publishable` anahtarıyla bağlanır.
+Written in Kotlin + Jetpack Compose. There is no backend; the app talks to the
+Supabase PostgREST + GoTrue APIs directly using a `publishable` key.
 
-Web sürümü: https://diecastpolice.vercel.app
+Web version: https://diecastpolice.vercel.app
 
 ---
 
-## Özellikler (v1)
+## Features (v1)
 
-| Ekran | İçerik |
+| Screen | Content |
 |---|---|
-| **Ana Sayfa** | Arama kutusu, istatistikler (toplam araç / ülke / marka), *Koleksiyona son katılanlar*, *Son eklenen modeller* |
-| **Arama** | Serbest metin araması + filtreler (ülke, üretici, marka, durum, acil servis grubu), sayfalı sonuç listesi |
-| **Detay** | Büyük görsel, model bilgileri, durum, konum/karşılaştırma, koleksiyon, özel yapım, bağlantılar, sabit alt aksiyon çubuğu |
-| **Hesap** | E-posta/şifre ile giriş & kayıt, Google OAuth, oturum yönetimi |
-| **Koleksiyon** | Sekmeli liste: *Koleksiyonum* / *Wishlist*, boş durumlar, sayı rozetleri |
+| **Home** | Search box, statistics (total vehicles / countries / brands), *Recently in Collection*, *Latest Added Models* |
+| **Search** | Free text search + filters (country, manufacturer, brand, status, emergency service group), paginated result list |
+| **Detail** | Large image, model details, status, location/comparison, collection, customization, links, fixed bottom action bar |
+| **Account** | Email/password sign in & sign up, Google OAuth, session management |
+| **Collection** | Tabbed list: *My Collection* / *Wishlist*, empty states, count badges |
 
-Koleksiyon ve wishlist kalıcıdır (Supabase `user_model_status` tablosu).
+The collection and the wishlist are persistent (Supabase `user_model_status` table).
+
+The whole user interface is in English.
 
 ---
 
-## Mimari
+## Architecture
 
-Kotlin, DI kütüphanesi ve veritabanı katmanı **yoktur** — bilinçli olarak basit tutulmuştur.
+No DI library and no database layer — deliberately kept simple.
 
 ```
 app/src/main/java/app/diecast/police/museum/
-├── core/            Config (sabitler), Network (OkHttp)
+├── core/            Config (constants), Network (OkHttp)
 ├── data/
-│   ├── model/       Vehicle, AuthModels, Lenient serializer'lar, Filters
+│   ├── model/       Vehicle, AuthModels, Lenient serializers, Filters
 │   ├── remote/      RestClient, Json
 │   ├── repository/  MuseumRepository, AuthRepository
-│   └── local/       SessionStore (DataStore: oturum)
-├── domain/          Status, EmergencyGroups, Timestamps  (web portları)
+│   └── local/       SessionStore (DataStore: session)
+├── domain/          Status, EmergencyGroups, Timestamps  (ports of the web app)
 ├── ui/              home / search / detail / collection / auth / navigation / theme
-└── MuseumApp.kt     AppContainer (manuel ServiceLocator)
+└── MuseumApp.kt     AppContainer (manual ServiceLocator)
 ```
 
-**Ağ katmanı:** `RestClient` → OkHttp → `https://<ref>.supabase.co/rest/v1`
-**Kimlik:** GoTrue (`/auth/v1`) → JWT `Authorization: Bearer` başlığı
-**Oturum:** `DataStore` üzerinde saklanan access/refresh token
+**Network layer:** `RestClient` → OkHttp → `https://<ref>.supabase.co/rest/v1`
+**Auth:** GoTrue (`/auth/v1`) → JWT `Authorization: Bearer` header
+**Session:** access/refresh tokens stored in `DataStore`
 
-### Google OAuth: PKCE akışı
+### Google OAuth: the PKCE flow
 
-Google girişi **PKCE** (RFC 7636) ile yürütülür:
+Google sign in runs through **PKCE** (RFC 7636):
 
-1. `Pkce.newCodeVerifier()` → 43–128 karakterlik rastgele verifier
-2. Verifier **kalıcı olarak** `DataStore`'a yazılır, `code_challenge` (S256)
-   `/authorize?flow_type=pkce&code_challenge=…` isteğine eklenir
+1. `Pkce.newCodeVerifier()` → a random verifier of 43–128 characters
+2. The verifier is written to `DataStore` **persistently**, and the `code_challenge`
+   (S256) is added to the `/authorize?flow_type=pkce&code_challenge=…` request
 3. Google → Supabase callback → `diecastpolice://auth-callback?code=…`
 4. `MainActivity.handleOAuthRedirect()` → `OAuthRedirect.parse()` →
-   `POST /token?grant_type=pkce` (`auth_code` + `code_verifier`) → oturum
+   `POST /token?grant_type=pkce` (`auth_code` + `code_verifier`) → session
 
-> Verifier **bellekte tutulmaz.** OAuth tarayıcıda tamamlanırken uygulama
-> arka planda kalır ve sistem tarafından öldürülebilir; bellekte tutulsaydı
-> dönüşte "doğrulama verisi bulunamadı" hatası alınırdı.
+> The verifier is **not kept in memory.** While OAuth completes in the browser
+> the app stays in the background and the system may kill it; keeping the
+> verifier in memory only would produce a "verification data not found" error
+> on the return.
 
-`core/OAuthRedirect.kt` saf Kotlin'tir (Android'e bağımlı değil) ve dönüş
-adresini ayrıştırır: query önceliklidir, fragment'taki eski (implicit) token
-biçimi geriye dönük desteklenir.
+`core/OAuthRedirect.kt` is plain Kotlin (no Android dependency) and parses the
+return URL: the query takes priority, and the old (implicit) token format in the
+fragment is still supported for backward compatibility.
 
-> **Giriş olayı ≠ oturum durumu.** Oturum `DataStore`'da kalıcı olduğu için
-> her ekran açılışında zaten vardır; bu yüzden "giris tamamlandı" bilgisi
-> ayrı bir olay kanalından (`AuthRepository.signedInEvents`) yayınlanır.
-> Aksi halde oturumu olan kullanıcı *Hesap* sekmesine her girdiğinde ekran
-> otomatik kapanıyordu.
+> **Sign-in event ≠ session state.** Because the session is persisted in
+> `DataStore` it already exists on every screen open, so the "sign-in completed"
+> information is published on a separate event channel
+> (`AuthRepository.signedInEvents`). Otherwise the screen closed automatically
+> every time a signed-in user opened the *Account* tab.
 
-### Web uygulamasıyla uyum
+### Compatibility with the web app
 
-Web'deki davranış birebir portlandı:
+The behaviour of the web app was ported as-is:
 
 - `Status.filterValues` / `displayLabel` → `domain/Status.kt`
 - `getEmergencyServiceGroup` → `domain/EmergencyGroups.kt`
-- "Recently in Collection" sıralaması → `domain/Timestamps.kt`
+- "Recently in Collection" ordering → `domain/Timestamps.kt`
 
-> **Kritik PostgREST davranışı:** Gömülü (embedded) kolon üzerinde filtreleme
-> mutlaka `!inner` gerektirir. Düz embed'de filtre **sessizce yok sayılır** ve
-> tüm satırlar döner. `Config.VEHICLE_SELECT` bu yüzden `!inner` kullanır.
+> **Critical PostgREST behaviour:** filtering on an embedded column **requires**
+> `!inner`. With a plain embed the filter is **silently ignored** and every row
+> is returned. That is why `Config.VEHICLE_SELECT` uses `!inner`.
 
 ---
 
-## Derleme
+## Build
 
-Gereksinimler: **JDK 17**, Android SDK (compileSdk 35).
+Requirements: **JDK 17**, Android SDK (compileSdk 35).
 
 ```bash
-# local.properties içinde SDK yolunu ayarla
-sdk.dir=C\:\\Users\\<kullanici>\\AppData\\Local\\Android\\Sdk
+# set the SDK path in local.properties
+sdk.dir=C\:\\Users\\<user>\\AppData\\Local\\Android\\Sdk
 
 ./gradlew assembleDebug     # APK -> app/build/outputs/apk/debug/app-debug.apk
-./gradlew testDebugUnitTest # birim testleri
+./gradlew testDebugUnitTest # unit tests
 ```
 
 | | |
@@ -104,44 +107,67 @@ sdk.dir=C\:\\Users\\<kullanici>\\AppData\\Local\\Android\\Sdk
 | minSdk | 26 (Android 8.0) |
 | Compose BOM | 2024.12.01 |
 
+### Release signing
+
+Release builds are signed with the keystore described in `keystore.properties`
+(file kept outside the repository and gitignored). When that file is missing the
+release build falls back to the debug signing key, so CI stays green.
+
+```properties
+storeFile=keystore/release.jks
+storePassword=...
+keyAlias=...
+keyPassword=...
+```
+
+> Keep the keystore backed up: if it is lost, the app can no longer be updated
+> on the devices that already have it installed.
+
 ---
 
-## Testler
+## Tests
 
-`app/src/test/resources/fixtures/` altındaki dosyalar **canlı Supabase API'sinden**
-alınmış gerçek yanıtlardır. Testler internete bağımlı değildir; modellerin
-gerçek veriyi doğru çözümlediğini cihaz olmadan kanıtlar.
+The files under `app/src/test/resources/fixtures/` are **real responses captured
+from the live Supabase API**. The tests do not depend on the internet; they
+prove that the models parse real data correctly without a device.
 
 ```bash
 ./gradlew testDebugUnitTest
 ```
 
-Kapsam:
-- `LiveResponseParsingTest` — gerçek API yanıtlarının `Vehicle` modeline çözümü,
-  durum filtreleri, "Recently in Collection" sıralaması (web referansıyla birebir)
-- `VehicleFieldMappingTest` — her JSON anahtarı doğru alana yansıyor mu
-  (`@SerialName` eksiklikleri sessizce `null` üretir — bu test bunu yakalar)
-- `LenientSerializerTest` — değişken JSON tipleri (`"true"`, `"5"`, `null`)
-- `PkceTest` — RFC 7636 test vektörü, verifier/challenge üretimi, authorize URL'i
-- `OAuthRedirectTest` — dönüş adresi ayrıştırma (query/fragment, hata, yüzde kodlama)
-- `AuthUserMappingTest` — gosterilen adın eşlemesi (`display_name` → `full_name` → e-posta)
+Coverage:
+- `LiveResponseParsingTest` — parsing of real API responses into the `Vehicle`
+  model, status filters, the "Recently in Collection" ordering (identical to the
+  web reference)
+- `VehicleFieldMappingTest` — checks that every JSON key reaches the right field
+  (a missing `@SerialName` silently produces `null` — this test catches it)
+- `LenientSerializerTest` — variable JSON types (`"true"`, `"5"`, `null`)
+- `RecentlyInCollectionOrderTest` — the ordering guarantee of the "Recently in
+  Collection" section (regression guard for `order=id.desc`)
+- `PkceTest` — the RFC 7636 test vector, verifier/challenge generation, the
+  authorize URL
+- `OAuthRedirectTest` — return URL parsing (query/fragment, errors, percent
+  encoding)
+- `AuthUserMappingTest` — the mapping of the displayed name (`display_name` →
+  `full_name` → email)
 
 ---
 
-## Yapılandırma
+## Configuration
 
-`core/Config.kt` içinde:
+In `core/Config.kt`:
 
-| Değer | Açıklama |
+| Value | Description |
 |---|---|
-| `SUPABASE_URL` | Proje URL'si |
-| `ANON_KEY` | **Publishable** anahtar (gizli değildir, istemciye konulabilir) |
-| `CLOUDINARY_CLOUD` | Görsel CDN cloud adı |
+| `SUPABASE_URL` | The project URL |
+| `ANON_KEY` | The **publishable** key (not a secret, safe to ship in a client) |
+| `CLOUDINARY_CLOUD` | The image CDN cloud name |
 | `REDIRECT_URI` | `diecastpolice://auth-callback` |
 
-> Service-role anahtarı **hiçbir yerde** bulunmaz ve projeye dahil değildir.
+> The service-role key is **nowhere** in the repository and is not part of the
+> project.
 
-### Google OAuth için gerekli kurulum
+### Required setup for Google OAuth
 
 Supabase Dashboard → **Authentication → URL Configuration → Redirect URLs**:
 
@@ -149,14 +175,15 @@ Supabase Dashboard → **Authentication → URL Configuration → Redirect URLs*
 diecastpolice://auth-callback
 ```
 
-Bu olmadan Google ile giriş tarayıcıdan uygulamaya geri dönemez.
+Without this, Google sign in cannot return from the browser to the app.
 
-> Not: GoTrue'un `state` kaydının ömrü ~10 dakikadır. Google ekranında uzun
-> beklenirse dönüş `error_code=bad_oauth_state` ile **Site URL**'e düşer ve
-> uygulama açılmaz; bu durumda akış baştan başlatılmalıdır.
+> Note: the lifetime of GoTrue's `state` record is ~10 minutes. If you wait too
+> long on the Google screen the return falls back to the **Site URL** with
+> `error_code=bad_oauth_state` and the app does not open; in that case the flow
+> has to be started from the beginning.
 
 ---
 
-## Paket
+## Package
 
 `app.diecast.police.museum`

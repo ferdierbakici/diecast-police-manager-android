@@ -11,12 +11,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Canli Supabase API'sinden alinan GERCEK yanitlar (app/src/test/resources/fixtures
- * klasorundeki json dosyalari) bu uygulamanin kendi modellerinden gecirilir. Boylece "canlida boyle donuyor, model
- * bunu cozebiliyor mu?" sorusu cihaz olmadan JVM'de kanitlanir.
+ * REAL responses captured from the live Supabase API (the json files in
+ * app/src/test/resources/fixtures) are pushed through this app's own models. That way
+ * the question "does this come back like that in production, and can the model parse it?"
+ * is proven on the JVM without a device.
  *
- * Fixture'lar calistirma aninda degil, onceden `curl` ile kaydedilmistir; testler
- * internete bagimli degildir.
+ * The fixtures were recorded with `curl` beforehand, not at run time; the tests
+ * do not depend on the internet.
  */
 class LiveResponseParsingTest {
 
@@ -32,58 +33,58 @@ class LiveResponseParsingTest {
     // ------------------------------------------------------------------ //
 
     @Test
-    fun `son eklenenler fixture'i tam Vehicle modeline cozulur`() {
+    fun `the last added fixture decodes into the full Vehicle model`() {
         val text = fixture("last_added.json")
         val vehicles = decodeVehicles(text)
 
-        assertTrue("en az 10 kayit beklenir, gelen: ${vehicles.size}", vehicles.size >= 10)
+        assertTrue("at least 10 records are expected, got: ${vehicles.size}", vehicles.size >= 10)
         assertTrue(
-            "id'ler azalan olmali (order=id.desc)",
+            "the ids must be descending (order=id.desc)",
             vehicles.zipWithNext().all { (a, b) -> a.id > b.id }
         )
 
         val first = vehicles.first()
-        assertNotNull("model_name okunmali", first.modelName)
+        assertNotNull("model_name must be read", first.modelName)
         assertTrue("id > 0", first.id > 0)
 
-        // Embed'ler NESNE olarak cozulmeli (dizi degil) - !inner formu boyle donuyor.
-        assertNotNull("countries embed'i cozulmeli", first.countries)
+        // The embeds must be decoded as OBJECTS (not arrays) - the !inner form returns them that way.
+        assertNotNull("the countries embed must be decoded", first.countries)
         assertTrue(
-            "countryName dolu olmali",
+            "countryName must not be empty",
             !first.countryName.isNullOrBlank()
         )
-        assertNotNull("manufacturers embed'i cozulmeli", first.manufacturers)
+        assertNotNull("the manufacturers embed must be decoded", first.manufacturers)
 
-        // Ayni dosyadaki TUM kayitlar cozulebilmeli (tek bozuk satir sayfayi cokertmemeli).
+        // ALL records in the same file must be decodable (a single broken row must not break the page).
         vehicles.forEachIndexed { i, v ->
-            assertTrue("kayit $i id > 0 olmali", v.id > 0)
+            assertTrue("record $i must have id > 0", v.id > 0)
         }
     }
 
     @Test
-    fun `son eklenenler ilk kaydin alanlari beklenen degerlerle dolu`() {
+    fun `the fields of the first record of the last added fixture hold the expected values`() {
         val first = decodeVehicles(fixture("last_added.json")).first()
 
-        assertEquals("ilk kayit id", 5965, first.id)
+        assertEquals("the id of the first record", 5965, first.id)
         assertEquals("model_name", "FIAT 238", first.modelName)
         assertEquals("model_year (LenientInt)", 1980, first.modelYear)
         assertEquals("scale", "1/43", first.scale)
-        assertEquals("renk", "White", first.color)
-        assertEquals("malzeme", "Diecast", first.material)
-        assertEquals("ulke embed adi", "Italy", first.countryName)
-        assertEquals("doviz", "EUR", first.currency)
-        assertEquals("puan (LenientInt)", 0, first.rating)
-        assertEquals("ozel yapim (LenientBool)", false, first.isCustomized)
+        assertEquals("color", "White", first.color)
+        assertEquals("material", "Diecast", first.material)
+        assertEquals("the country embed name", "Italy", first.countryName)
+        assertEquals("currency", "EUR", first.currency)
+        assertEquals("rating (LenientInt)", 0, first.rating)
+        assertEquals("customization (LenientBool)", false, first.isCustomized)
         assertEquals("model_length NULL -> null", null, first.modelLength)
     }
 
     @Test
-    fun `arama fixture'i cozulur ve sorgu terimi ile uyumlu`() {
+    fun `the search fixture decodes and matches the query term`() {
         val vehicles = decodeVehicles(fixture("search_ambulance.json"))
 
-        assertTrue("ambulance aramasi kayit dondurmeli", vehicles.isNotEmpty())
+        assertTrue("the ambulance search must return records", vehicles.isNotEmpty())
         assertTrue(
-            "her kayit ambulance icermeli (case-insensitive)",
+            "every record must contain ambulance (case-insensitive)",
             vehicles.all {
                 it.modelName?.lowercase()?.contains("ambulance") == true
             }
@@ -91,21 +92,21 @@ class LiveResponseParsingTest {
     }
 
     @Test
-    fun `amerikan aksanli ve unicode servis adlari bozulmadan cozulur`() {
+    fun `service names with american accents and unicode are decoded without corruption`() {
         val vehicles = decodeVehicles(fixture("last_added.json"))
         val withService = vehicles.filter { !it.emergencyService.isNullOrBlank() }
 
-        assertTrue("servis adi olan kayit beklenir", withService.isNotEmpty())
+        assertTrue("records with a service name are expected", withService.isNotEmpty())
 
-        // Em dash (U+2014) iceren servis adlari mojibake olmadan gelmeli.
+        // Service names containing an em dash (U+2014) must arrive without mojibake.
         val emDash = withService.filter { it.emergencyService!!.contains('\u2014') }
         assertTrue(
-            "en az bir servis adi em dash icermeli (gercek veri boyle)",
+            "at least one service name must contain an em dash (the real data is like that)",
             emDash.isNotEmpty()
         )
         emDash.forEach {
             assertTrue(
-                "em dash etrafinda bosluk korunmali: '${it.emergencyService}'",
+                "the spaces around the em dash must be preserved: '${it.emergencyService}'",
                 it.emergencyService!!.contains(" \u2014 ")
             )
         }
@@ -114,11 +115,11 @@ class LiveResponseParsingTest {
     // ------------------------------------------------------------------ //
 
     @Test
-    fun `recently in collection adaylari siralanip ilk 10 id web ile ayni cikar`() {
+    fun `the recently in collection candidates are sorted and the first 10 ids match the web app`() {
         val text = fixture("recent_candidates.json")
         val candidates: List<StatusCandidate> = json.decodeFromString(text)
 
-        assertTrue("aday listesi 70+ olmali, gelen: ${candidates.size}", candidates.size >= 70)
+        assertTrue("the candidate list must have 70+ entries, got: ${candidates.size}", candidates.size >= 70)
 
         val topIds = candidates
             .sortedWith(
@@ -129,7 +130,7 @@ class LiveResponseParsingTest {
             .take(10)
             .map { it.id }
 
-        // Web uygulamasinin canli referansi ile BIREBIR ayni olmali.
+        // It must be EXACTLY the same as the live reference of the web app.
         assertEquals(
             listOf(3846, 5684, 5683, 5714, 5695, 5688, 2192, 5496, 5485, 2195),
             topIds
@@ -137,51 +138,51 @@ class LiveResponseParsingTest {
     }
 
     @Test
-    fun `timestamp cozumleme status_changed_at oncelikli ve UTC varsayiyor`() {
-        // status_changed_at dolu -> o kullanilir
+    fun `the timestamp resolution prefers status_changed_at and assumes UTC`() {
+        // status_changed_at is present -> it is used
         assertEquals(
             Timestamps.parseIsoMillis("2026-10-21T15:10:45.90612"),
             Timestamps.resolvedMillis("2026-10-21T15:10:45.90612", "2020-01-01T00:00:00", null)
         )
-        // status_changed_at yok -> created_at
+        // status_changed_at is missing -> created_at
         assertEquals(
             Timestamps.parseIsoMillis("2021-05-05T10:00:00"),
             Timestamps.resolvedMillis(null, "2021-05-05T10:00:00", "2022-01-01T00:00:00")
         )
-        // ikisi de yok -> updated_at
+        // both are missing -> updated_at
         assertEquals(
             Timestamps.parseIsoMillis("2022-01-01T00:00:00"),
             Timestamps.resolvedMillis(null, null, "2022-01-01T00:00:00")
         )
-        // hicbiri yok -> null
+        // none of them -> null
         assertEquals(null, Timestamps.resolvedMillis(null, null, null))
     }
 
     // ------------------------------------------------------------------ //
 
     @Test
-    fun `durum filtre degerleri web ile ayni`() {
-        // "All" -> filtre uygulanmaz (web getStatusFilterValues ile ayni)
+    fun `the status filter values are the same as the web app`() {
+        // "All" -> no filter is applied (same as the web app's getStatusFilterValues)
         assertEquals(emptyList<String>(), Status.filterValues("All"))
         assertEquals(emptyList<String>(), Status.filterValues(""))
 
-        // Collection -> 4 ham deger
+        // Collection -> 4 raw values
         assertEquals(Status.COLLECTION, Status.filterValues("Collection"))
         assertEquals(
             listOf("Available", "Available - Displayed", "In Stock", "Collection"),
             Status.filterValues("Collection")
         )
 
-        // Missing -> 2 ham deger
+        // Missing -> 2 raw values
         assertEquals(listOf("Not Available", "Missing"), Status.filterValues("Missing"))
 
-        // Diger ham durumlar (canlida: Ordered, To Process) kendi adiyla gecer
+        // Other raw statuses (in the live data: Ordered, To Process) pass through with their own name
         assertEquals(listOf("Ordered"), Status.filterValues("Ordered"))
         assertEquals(listOf("To Process"), Status.filterValues("To Process"))
     }
 
     @Test
-    fun `durum gorunen etiketi web ile ayni`() {
+    fun `the visible status label is the same as the web app`() {
         assertEquals("Missing", Status.displayLabel(null))
         assertEquals("Missing", Status.displayLabel(""))
         assertEquals("Collection", Status.displayLabel("Available"))
@@ -191,15 +192,15 @@ class LiveResponseParsingTest {
         assertEquals("Collection", Status.displayLabel("  collection  "))
         assertEquals("Missing", Status.displayLabel("Missing"))
         assertEquals("Missing", Status.displayLabel("Not Available"))
-        // Canli veride bulunan iki ham durum etiketi degismeden gecer
+        // The two raw statuses found in the live data pass through with an unchanged label
         assertEquals("Ordered", Status.displayLabel("Ordered"))
         assertEquals("To Process", Status.displayLabel("To Process"))
     }
 
     @Test
-    fun `model stats fixture'i cozulur`() {
+    fun `the model stats fixture decodes`() {
         val text = fixture("model_stats.json")
         val arr = Json.parseToJsonElement(text)
-        assertTrue("model_stats bir dizi olmali", arr is kotlinx.serialization.json.JsonArray)
+        assertTrue("model_stats must be an array", arr is kotlinx.serialization.json.JsonArray)
     }
 }

@@ -1,27 +1,27 @@
 package app.diecast.police.museum.core
 
 /**
- * Sunucu tarafinda hicbir API yok; uygulama dogrudan Supabase PostgREST'e konusur.
- * Anahtar "publishable" (eski anon key'in modern hali) - istemci tarafinda kullanmak icin tasarlandi.
+ * There is no server-side API; the app talks to Supabase PostgREST directly.
+ * The key is a "publishable" key (the modern form of the old anon key) - designed for client-side use.
  */
 object Config {
     const val PROJECT_URL = "https://eojfccviyaambajvlsqu.supabase.co"
     const val REST_URL = "$PROJECT_URL/rest/v1"
     const val AUTH_URL = "$PROJECT_URL/auth/v1"
 
-    /** Publishable key (public) - sadece okuma + kullanici JWT'si ile yazma. */
+    /** Publishable key (public) - read only, plus writes with the user's JWT. */
     const val ANON_KEY = "sb_publishable_ffun9Q-34eCT-Iuuqyr1pQ_doJa_ZcR"
 
     const val CLOUDINARY_CLOUD = "i40ukiay"
 
-    /** OAuth donusu icin deep link. Supabase dashboard'unda "Redirect URLs"e eklenmelidir. */
+    /** Deep link for the OAuth return. Must be added to "Redirect URLs" in the Supabase dashboard. */
     const val REDIRECT_URI = "diecastpolice://auth-callback"
 
     const val SITE_URL = "https://diecastpolice.vercel.app"
 
     /**
-     * Arac detayinda gosterilecek kolonlar. `select=*` yerine daraltilmis liste:
-     * hem daha hizli hem de 48 kolonun tamami tasinmaz.
+     * The columns shown on the vehicle detail screen. A narrowed list instead of `select=*`:
+     * it is faster and does not carry all 48 columns.
      */
     const val VEHICLE_COLUMNS = "id,model_name,model_year,scale,availability_status," +
         "previous_status,status_changed_at,created_at,updated_at," +
@@ -33,16 +33,16 @@ object Config {
         "country_id,manufacturer_id,vehicle_brand_id,series_id"
 
     /**
-     * Foreign key gomulmus hali (detay/liste kartlari icin).
+     * Embedded (foreign key) version, used by the detail/list cards.
      *
-     * KRITIK: `countries`, `manufacturers`, `vehicle_brands` **!inner** olmak zorunda.
-     * PostgREST duz (inner olmayan) embed uzerinde filtre uygulandiginda filtreyi
-     * SESSIZCE yok sayar ve tum satirlari dondurur (canli API'de dogrulandi:
-     * `countries.name=eq.France` duz embed ile 5783, !inner ile 1494).
-     * Web uygulamasi da ayni sekilde `!inner(*)` kullaniyor.
+     * CRITICAL: `countries`, `manufacturers`, `vehicle_brands` **must** use `!inner`.
+     * PostgREST silently ignores a filter on a plain (non-inner) embed and returns
+     * every row (verified against the live API: `countries.name=eq.France` returns
+     * 5783 rows with a plain embed and 1494 with `!inner`).
+     * The web app uses `!inner(*)` for the same reason.
      *
-     * `series` filtre olarak kullanilmadigi ve `series_id` 4495 satirda NULL
-     * oldugu icin duz embed kalir (inner olsa o kayitlar kaybolurdu).
+     * `series` is never used as a filter and `series_id` is NULL in 4495 rows,
+     * so it stays a plain embed (with an inner join those records would disappear).
      */
     const val VEHICLE_SELECT =
         "$VEHICLE_COLUMNS,countries!inner(name,flag_emoji),manufacturers!inner(name)," +

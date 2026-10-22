@@ -19,8 +19,8 @@ import app.diecast.police.museum.data.model.Vehicle
 import app.diecast.police.museum.ui.theme.MuseumInkSoft
 
 /**
- * Arama sonuclarinda kullanilan yatay liste satiri.
- * Gorsel solda, metin sagda - telefonda tek elle kaydirmada daha iyi okunur.
+ * The horizontal list row used in the search results.
+ * Image on the left, text on the right - easier to read while scrolling with one hand.
  */
 @Composable
 fun VehicleListItem(

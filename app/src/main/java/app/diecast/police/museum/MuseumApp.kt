@@ -20,8 +20,8 @@ class MuseumApp : Application() {
 }
 
 /**
- * Manuel DI (ServiceLocator). Hilt/KSP kullanilmaz - derleme suresi ve
- * bagimlilik riski minimumda tutulur.
+ * Manual DI (ServiceLocator). Hilt/KSP are not used - build time and
+ * dependency risk are kept to a minimum.
  */
 class AppContainer(context: Context) {
 

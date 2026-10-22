@@ -27,19 +27,20 @@ class LoginViewModel(
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
 
-    /** Aktif oturum (OAuth donusu dahil). */
+    /** The active session (including the OAuth return). */
     val session: StateFlow<Session?> = authRepository.sessionFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /**
-     * "Giris tamamlandi" olayi.
+     * The "sign-in completed" event.
      *
-     * Oturumun varligi degil, oturumun **yeni olustugu an** bildirilir; boylece
-     * oturumu olan kullanici "Hesap" sekmesine her girdiginde ekran kapanmaz.
+     * It reports the moment a session is **newly created**, not the presence of
+     * a session, so that a user who is already signed in does not see the screen
+     * close every time they open the "Account" tab.
      */
     val signedInEvents: SharedFlow<Session> = authRepository.signedInEvents
 
-    /** Deep link ile gelen OAuth mesaji (hata gibi). */
+    /** An OAuth message arriving through the deep link (an error, for example). */
     val authMessage: StateFlow<String?> = authRepository.authMessage
 
     fun signIn(email: String, password: String) {
@@ -62,7 +63,7 @@ class LoginViewModel(
         submit { authRepository.signUp(email, password, displayName) }
     }
 
-    /** OAuth donusunden gelen token ile giris. */
+    /** Signs in with the tokens returned by OAuth. */
     fun signInWithTokens(accessToken: String, refreshToken: String, expiresIn: Long) {
         submit {
             authRepository.signInWithTokens(accessToken, refreshToken, expiresIn)
@@ -70,10 +71,10 @@ class LoginViewModel(
     }
 
     /**
-     * Google OAuth baslatma URL'i (PKCE).
+     * The Google OAuth start URL (PKCE).
      *
-     * URL uretilirken `code_verifier` kalici olarak yazilir; tarayicida
-     * tamamlanan akis donuste bu veriyle token'a degistirilir.
+     * While the URL is generated the `code_verifier` is written persistently; the
+     * flow completed in the browser is exchanged for a token with that data.
      */
     private val _googleUrl = MutableStateFlow<String?>(null)
     val googleUrl: StateFlow<String?> = _googleUrl.asStateFlow()
@@ -86,7 +87,7 @@ class LoginViewModel(
         }
     }
 
-    /** Tarayiciya gonderildikten sonra URL'yi temizler (tek seferlik). */
+    /** Clears the URL once it has been sent to the browser (one shot). */
     fun consumeGoogleUrl() {
         _googleUrl.value = null
     }
@@ -95,7 +96,7 @@ class LoginViewModel(
         viewModelScope.launch { authRepository.signOut() }
     }
 
-    /** Deep link ile gelen OAuth hata mesajini ekrana tasi. */
+    /** Forwards an OAuth error message arriving through the deep link to the screen. */
     fun showAuthMessage(message: String) {
         _state.update { it.copy(error = message, info = null) }
         authRepository.consumeAuthMessage()

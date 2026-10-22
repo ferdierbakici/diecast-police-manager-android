@@ -34,8 +34,8 @@ import app.diecast.police.museum.ui.theme.MuseumCreamDark
 import app.diecast.police.museum.ui.theme.MuseumInkSoft
 
 /**
- * Arac karti. Web'deki kucuk "model kart"inin mobil uyarlamasi:
- * gorsel ustte, altinda 2 satirlik ad + meta satiri + durum rozeti.
+ * A vehicle card. The mobile adaptation of the small "model card" of the web app:
+ * image on top, below it a 2-line name + meta line + status badge.
  */
 @Composable
 fun VehicleCard(
@@ -105,7 +105,7 @@ fun VehicleCard(
     }
 }
 
-/** Gorsel ya da gorsel yoksa yer tutucu. */
+/** The image, or a placeholder when there is none. */
 @Composable
 fun VehicleImage(
     vehicle: Vehicle,
@@ -140,7 +140,7 @@ fun VehicleImage(
     }
 }
 
-/** Yatay liste karti (ana sayfa bolumleri icin). */
+/** A horizontal list card (for the home screen sections). */
 @Composable
 fun VehicleRowCard(
     vehicle: Vehicle,
