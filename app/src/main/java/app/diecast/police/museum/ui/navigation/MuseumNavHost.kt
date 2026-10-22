@@ -30,6 +30,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import app.diecast.police.museum.data.model.TagFilter
 import app.diecast.police.museum.ui.appViewModel
 import app.diecast.police.museum.ui.auth.LoginScreen
 import app.diecast.police.museum.ui.collection.CollectionScreen
@@ -69,6 +70,10 @@ fun MuseumApp() {
     @Suppress("UNUSED_EXPRESSION")
     sessionViewModel
 
+    // A filter criterion that was requested by tapping a tag on the detail screen.
+    // It is handed over to the search screen and consumed there.
+    var pendingTagFilter by remember { mutableStateOf<TagFilter?>(null) }
+
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = TABS.any { it.route == currentRoute }
@@ -102,7 +107,11 @@ fun MuseumApp() {
             }
 
             composable(Routes.SEARCH) {
-                SearchScreen(onVehicleClick = { navController.navigate(Routes.detail(it)) })
+                SearchScreen(
+                    onVehicleClick = { navController.navigate(Routes.detail(it)) },
+                    pendingFilter = pendingTagFilter,
+                    onPendingFilterConsumed = { pendingTagFilter = null }
+                )
             }
 
             composable(Routes.COLLECTION) {
@@ -127,7 +136,12 @@ fun MuseumApp() {
                 VehicleDetailScreen(
                     vehicleId = vehicleId,
                     onBack = { navController.popBackStack() },
-                    onLoginRequired = { navController.navigate(Routes.LOGIN) }
+                    onLoginRequired = { navController.navigate(Routes.LOGIN) },
+                    onTagClick = { tag ->
+                        // The tag opens the search screen with the matching filter.
+                        pendingTagFilter = tag
+                        navController.navigateToSearchWithFilter()
+                    }
                 )
             }
         }
@@ -141,6 +155,20 @@ private fun NavHostController.navigateToTab(route: String) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
         restoreState = true
+    }
+}
+
+/**
+ * Opens the search screen with a filter that was requested by tapping a tag.
+ *
+ * Everything above the start destination is removed (the detail screen), the same way
+ * the bottom navigation does it. `saveState` is deliberately NOT used here: a saved
+ * detail screen would be restored on top of the search screen.
+ */
+private fun NavHostController.navigateToSearchWithFilter() {
+    navigate(Routes.SEARCH) {
+        popUpTo(graph.findStartDestination().id) { inclusive = false }
+        launchSingleTop = true
     }
 }
 

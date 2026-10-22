@@ -13,6 +13,8 @@ import app.diecast.police.museum.data.remote.RestClient
 import app.diecast.police.museum.domain.EmergencyGroups
 import app.diecast.police.museum.domain.Status
 import app.diecast.police.museum.domain.Timestamps
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -32,6 +34,9 @@ data class ModelCounts(
 class MuseumRepository(private val rest: RestClient) {
 
     private var cachedOptions: FilterOptions? = null
+
+    /** Only one request may load the filter options (they are needed by every search). */
+    private val optionsMutex = Mutex()
 
     // ------------------------------------------------------------------ //
     //  Statistics
@@ -131,7 +136,12 @@ class MuseumRepository(private val rest: RestClient) {
     ): PagedResult {
         // The group filter needs every service value, so load the options first if they are missing.
         if (cachedOptions == null) fetchFilterOptions()
-        val params = buildSearchParams(filters, page, pageSize)
+        val params = buildSearchParams(
+            filters = filters,
+            page = page,
+            pageSize = pageSize,
+            options = cachedOptions ?: FilterOptions()
+        )
         val result = rest.get(
             path = "/vehicles",
             params = params,
@@ -149,55 +159,6 @@ class MuseumRepository(private val rest: RestClient) {
             pageSize = pageSize,
             hasMore = (page + 1) * pageSize < total
         )
-    }
-
-    private fun buildSearchParams(
-        filters: Filters,
-        page: Int,
-        pageSize: Int
-    ): Map<String, String> {
-        val params = linkedMapOf(
-            "select" to Config.VEHICLE_SELECT,
-            "order" to "id.desc",
-            "offset" to (page * pageSize).toString(),
-            "limit" to pageSize.toString()
-        )
-
-        val search = filters.search.trim()
-        if (search.isNotEmpty()) {
-            params["model_name"] = "ilike.*$search*"
-        }
-
-        if (filters.country != ALL) {
-            params["countries.name"] = "eq.${filters.country}"
-        }
-        if (filters.manufacturer != ALL) {
-            params["manufacturers.name"] = "eq.${filters.manufacturer}"
-        }
-        if (filters.brand != ALL) {
-            params["vehicle_brands.name"] = "eq.${filters.brand}"
-        }
-
-        // Web logic: when a group and a service are both selected, only the service is applied.
-        if (filters.service != ALL) {
-            params["emergency_service"] = "eq.${filters.service}"
-        } else if (filters.serviceGroup != ALL) {
-            val groupValues = cachedOptions?.services.orEmpty().filter {
-                EmergencyGroups.groupOf(it) == filters.serviceGroup
-            }
-            if (groupValues.isNotEmpty()) {
-                params["emergency_service"] = "in.(${groupValues.joinToString(",")})"
-            }
-        }
-
-        val statusValues = Status.filterValues(filters.status)
-        when {
-            statusValues.isEmpty() -> Unit
-            statusValues.size == 1 -> params["availability_status"] = "eq.${statusValues.first()}"
-            else -> params["availability_status"] = "in.(${statusValues.joinToString(",")})"
-        }
-
-        return params
     }
 
     // ------------------------------------------------------------------ //
@@ -221,12 +182,17 @@ class MuseumRepository(private val rest: RestClient) {
     //  Filter options
     // ------------------------------------------------------------------ //
 
-    suspend fun fetchFilterOptions(forceRefresh: Boolean = false): FilterOptions {
-        cachedOptions?.let { if (!forceRefresh) return it }
+    suspend fun fetchFilterOptions(forceRefresh: Boolean = false): FilterOptions =
+        optionsMutex.withLock {
+            cachedOptions?.let { if (!forceRefresh) return@withLock it }
+            loadFilterOptions()
+        }
 
+    private suspend fun loadFilterOptions(): FilterOptions {
         val countries = fetchNameList("/countries")
         val manufacturers = fetchNameList("/manufacturers")
         val brands = fetchNameList("/vehicle_brands")
+        val series = fetchIdNameList("/series")
 
         val statuses = linkedSetOf<String>()
         val services = sortedSetOf<String>()
@@ -258,8 +224,10 @@ class MuseumRepository(private val rest: RestClient) {
             countries = countries,
             manufacturers = manufacturers,
             brands = brands,
+            series = series.map { it.second },
             statuses = statuses.sorted(),
             services = services.toList(),
+            seriesIds = series.associate { it.second to it.first },
             loaded = true
         )
         cachedOptions = options
@@ -275,6 +243,21 @@ class MuseumRepository(private val rest: RestClient) {
 
     @Serializable
     private data class NameRow(val name: String? = null)
+
+    /** Name + id pairs (needed for the series filter, which is applied on `series_id`). */
+    private suspend fun fetchIdNameList(path: String): List<Pair<Int, String>> {
+        val result = rest.get(path, mapOf("select" to "id,name", "order" to "name"))
+        if (!result.isSuccess) return emptyList()
+        return Json.default.decodeFromString<List<IdNameRow>>(result.body)
+            .mapNotNull { row ->
+                val id = row.id ?: return@mapNotNull null
+                val name = row.name?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                id to name
+            }
+    }
+
+    @Serializable
+    private data class IdNameRow(val id: Int? = null, val name: String? = null)
 
     // ------------------------------------------------------------------ //
     //  User collection / wishlist
@@ -418,3 +401,68 @@ class MuseumRepository(private val rest: RestClient) {
 }
 
 class MuseumException(message: String) : Exception(message)
+
+/**
+ * Builds the PostgREST query parameters of a search.
+ *
+ * The country / manufacturer / brand filters are applied on the embedded tables
+ * (that only works with the `!inner` embeds, see Config.VEHICLE_SELECT).
+ * The series filter is applied on the `series_id` column, because the `series`
+ * embed is a plain (left) join - PostgREST would silently ignore a filter on it.
+ */
+internal fun buildSearchParams(
+    filters: Filters,
+    page: Int,
+    pageSize: Int,
+    options: FilterOptions = FilterOptions()
+): Map<String, String> {
+    val params = linkedMapOf(
+        "select" to Config.VEHICLE_SELECT,
+        "order" to "id.desc",
+        "offset" to (page * pageSize).toString(),
+        "limit" to pageSize.toString()
+    )
+
+    val search = filters.search.trim()
+    if (search.isNotEmpty()) {
+        params["model_name"] = "ilike.*$search*"
+    }
+
+    if (filters.country != ALL) {
+        params["countries.name"] = "eq.${filters.country}"
+    }
+    if (filters.manufacturer != ALL) {
+        params["manufacturers.name"] = "eq.${filters.manufacturer}"
+    }
+    if (filters.brand != ALL) {
+        params["vehicle_brands.name"] = "eq.${filters.brand}"
+    }
+    if (filters.series != ALL) {
+        val seriesId = options.seriesIds[filters.series]
+        if (seriesId != null) {
+            params["series_id"] = "eq.$seriesId"
+        }
+    }
+
+    // Web logic: when a group and a service are both selected, only the service is applied.
+    if (filters.service != ALL) {
+        params["emergency_service"] = "eq.${filters.service}"
+    } else if (filters.serviceGroup != ALL) {
+        val groupValues = options.services.filter {
+            EmergencyGroups.groupOf(it) == filters.serviceGroup
+        }
+        if (groupValues.isNotEmpty()) {
+            params["emergency_service"] = "in.(${groupValues.joinToString(",")})"
+        }
+    }
+
+    val statusValues = Status.filterValues(filters.status)
+    when {
+        statusValues.isEmpty() -> Unit
+        statusValues.size == 1 -> params["availability_status"] = "eq.${statusValues.first()}"
+        else -> params["availability_status"] = "in.(${statusValues.joinToString(",")})"
+    }
+
+    return params
+}
+

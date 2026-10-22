@@ -14,7 +14,7 @@ Web version: https://diecastpolice.vercel.app
 | Screen | Content |
 |---|---|
 | **Home** | Search box, statistics (total vehicles / countries / brands), *Recently in Collection*, *Latest Added Models* |
-| **Search** | Free text search + filters (country, manufacturer, brand, status, emergency service group), paginated result list |
+| **Search** | Free text search + filters (country, manufacturer, brand, series, status, emergency service group), paginated result list |
 | **Detail** | Large image, model details, status, location/comparison, collection, customization, links, fixed bottom action bar |
 | **Account** | Email/password sign in & sign up, Google OAuth, session management |
 | **Collection** | Tabbed list: *My Collection* / *Wishlist*, empty states, count badges |
@@ -22,6 +22,24 @@ Web version: https://diecastpolice.vercel.app
 The collection and the wishlist are persistent (Supabase `user_model_status` table).
 
 The whole user interface is in English.
+
+### Tappable tags
+
+Under the image of the detail screen the metadata is shown as **tappable tags**:
+country, brand, manufacturer, series and emergency service. Tapping a tag switches
+to the search screen and shows all models of that criterion – the same behaviour as
+selecting the criterion in the filter sheet.
+
+| Tag | Filter that is applied |
+|---|---|
+| Country (with the flag) | `countries.name` |
+| Brand | `vehicle_brands.name` |
+| Manufacturer | `manufacturers.name` |
+| Series | `series_id` (the series name is resolved to its id) |
+| Emergency service | `emergency_service` + the emergency service group |
+
+The search screen starts with the filter of the tapped tag, so the result list is
+correct from the first frame (no second search, no flash of an unfiltered list).
 
 ---
 
@@ -83,6 +101,11 @@ The behaviour of the web app was ported as-is:
 > **Critical PostgREST behaviour:** filtering on an embedded column **requires**
 > `!inner`. With a plain embed the filter is **silently ignored** and every row
 > is returned. That is why `Config.VEHICLE_SELECT` uses `!inner`.
+>
+> The **series** filter is the exception: `series` stays a plain embed (with an
+> inner join the 4495 rows without a series would disappear), therefore the
+> series is filtered on the `series_id` column. The name → id mapping comes from
+> `FilterOptions.seriesIds`.
 
 ---
 
@@ -150,6 +173,9 @@ Coverage:
   encoding)
 - `AuthUserMappingTest` — the mapping of the displayed name (`display_name` →
   `full_name` → email)
+- `TagFilterTest` — the tag filters: every criterion of a tapped tag builds the
+  right PostgREST parameter, the other criteria are reset, the series name is
+  resolved to its id
 
 ---
 

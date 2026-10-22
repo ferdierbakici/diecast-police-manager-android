@@ -99,6 +99,15 @@ fun FilterSheet(
             )
 
             SelectField(
+                label = "Series",
+                value = draft.series,
+                options = options.series,
+                onSelect = { draft = draft.copy(series = it) },
+                enabled = options.loaded,
+                modifier = Modifier.padding(top = 10.dp)
+            )
+
+            SelectField(
                 label = "Status",
                 value = draft.status,
                 options = options.statuses,

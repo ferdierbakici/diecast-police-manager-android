@@ -38,6 +38,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.diecast.police.museum.data.model.ALL
+import app.diecast.police.museum.data.model.Filters
+import app.diecast.police.museum.data.model.TagFilter
 import app.diecast.police.museum.ui.appViewModel
 import app.diecast.police.museum.ui.components.EmptyState
 import app.diecast.police.museum.ui.components.ErrorState
@@ -49,13 +51,34 @@ import app.diecast.police.museum.ui.theme.MuseumInkSoft
 @Composable
 fun SearchScreen(
     onVehicleClick: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * A filter criterion that was requested by tapping a tag on the detail screen.
+     * It is applied as soon as the screen appears and then consumed.
+     */
+    pendingFilter: TagFilter? = null,
+    onPendingFilterConsumed: () -> Unit = {}
 ) {
-    val viewModel: SearchViewModel = appViewModel { SearchViewModel(it.museumRepository) }
+    // The screen starts with the filter of a tapped tag (no second search is needed then).
+    val viewModel: SearchViewModel = appViewModel { container ->
+        val tag = pendingFilter
+        SearchViewModel(
+            repository = container.museumRepository,
+            initialFilters = if (tag == null) Filters() else Filters().withTagFilter(tag)
+        )
+    }
     val state by viewModel.state.collectAsStateWithLifecycle()
     var sheetOpen by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
+
+    // A tapped tag switches to the search screen with the matching filter applied.
+    // (A filter that arrives later - while the screen already exists - is applied here.)
+    LaunchedEffect(pendingFilter) {
+        val filter = pendingFilter ?: return@LaunchedEffect
+        viewModel.applyTagFilter(filter)
+        onPendingFilterConsumed()
+    }
 
     // Infinite scroll: load the next page when the end is near.
     val shouldLoadMore by remember {
@@ -206,6 +229,7 @@ private fun app.diecast.police.museum.data.model.Filters.activeFilterCount(): In
     if (country != ALL) n++
     if (manufacturer != ALL) n++
     if (brand != ALL) n++
+    if (series != ALL) n++
     if (serviceGroup != ALL) n++
     if (service != ALL) n++
     if (status != ALL) n++

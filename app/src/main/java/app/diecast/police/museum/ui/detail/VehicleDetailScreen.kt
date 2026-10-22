@@ -55,6 +55,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.diecast.police.museum.data.model.TagFilter
 import app.diecast.police.museum.data.model.Vehicle
 import app.diecast.police.museum.ui.appViewModel
 import app.diecast.police.museum.ui.components.ErrorState
@@ -84,6 +85,8 @@ fun VehicleDetailScreen(
     vehicleId: Int,
     onBack: () -> Unit,
     onLoginRequired: () -> Unit,
+    /** A tag under the image was tapped: the matching filter is applied on the search screen. */
+    onTagClick: (TagFilter) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val viewModel = appViewModel { container ->
@@ -144,6 +147,7 @@ fun VehicleDetailScreen(
                     collectionCount = state.collectionCount,
                     wishlistCount = state.wishlistCount,
                     onBack = onBack,
+                    onTagClick = onTagClick,
                     contentPadding = innerPadding
                 )
             }
@@ -157,6 +161,7 @@ private fun DetailContent(
     collectionCount: Int,
     wishlistCount: Int,
     onBack: () -> Unit,
+    onTagClick: (TagFilter) -> Unit,
     contentPadding: androidx.compose.foundation.layout.PaddingValues
 ) {
     val context = LocalContext.current
@@ -212,7 +217,7 @@ private fun DetailContent(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                FlowChips(vehicle = vehicle)
+                TagChips(vehicle = vehicle, onTagClick = onTagClick)
 
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -381,38 +386,6 @@ private fun DetailRow(label: String, value: String?) {
             color = MuseumInk,
             modifier = Modifier.weight(1f)
         )
-    }
-}
-
-@androidx.compose.foundation.layout.ExperimentalLayoutApi
-@androidx.compose.runtime.Composable
-private fun FlowChips(vehicle: Vehicle) {
-    androidx.compose.foundation.layout.FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        val chips = listOfNotNull(
-            vehicle.countryName?.takeIf { it.isNotBlank() }?.let {
-                listOfNotNull(vehicle.countryFlag, it).joinToString(" ")
-            },
-            vehicle.brandName?.takeIf { it.isNotBlank() },
-            vehicle.manufacturerName?.takeIf { it.isNotBlank() },
-            vehicle.seriesName?.takeIf { it.isNotBlank() },
-            vehicle.emergencyService?.takeIf { it.isNotBlank() }
-        )
-        chips.forEach { chip ->
-            Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer
-            ) {
-                Text(
-                    text = chip,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
-                )
-            }
-        }
     }
 }
 

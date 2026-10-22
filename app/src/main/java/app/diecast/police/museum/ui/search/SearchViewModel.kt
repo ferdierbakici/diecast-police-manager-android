@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import app.diecast.police.museum.data.model.ALL
 import app.diecast.police.museum.data.model.FilterOptions
 import app.diecast.police.museum.data.model.Filters
+import app.diecast.police.museum.data.model.TagFilter
 import app.diecast.police.museum.data.model.Vehicle
 import app.diecast.police.museum.data.repository.MuseumRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +18,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SearchViewModel(
-    private val repository: MuseumRepository
+    private val repository: MuseumRepository,
+    /** The filter the screen starts with (a tag that was tapped on the detail screen). */
+    initialFilters: Filters = Filters()
 ) : ViewModel() {
 
     data class UiState(
@@ -34,10 +38,17 @@ class SearchViewModel(
         val pageSize: Int get() = 50
     }
 
-    private val _state = MutableStateFlow(UiState())
+    private val _state = MutableStateFlow(UiState(filters = initialFilters))
     val state: StateFlow<UiState> = _state.asStateFlow()
 
+    /** The debounce of the search text. */
+    private var debounceJob: Job? = null
+
+    /** The running search. A new search cancels the previous one (the last one wins). */
     private var searchJob: Job? = null
+
+    /** The running page load of the infinite scroll. A new search cancels it. */
+    private var loadMoreJob: Job? = null
 
     init {
         loadOptions()
@@ -48,8 +59,8 @@ class SearchViewModel(
 
     fun onSearchQueryChange(query: String) {
         _state.update { it.copy(filters = it.filters.copy(search = query)) }
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch {
+        debounceJob?.cancel()
+        debounceJob = viewModelScope.launch {
             delay(350) // debounce
             search()
         }
@@ -58,6 +69,19 @@ class SearchViewModel(
     /** Applies the selections made in the filter panel. */
     fun applyFilters(filters: Filters) {
         _state.update { it.copy(filters = filters) }
+        search()
+    }
+
+    /**
+     * Applies a filter criterion that was requested by tapping a tag
+     * (country / brand / manufacturer / series / emergency service) on the detail screen.
+     */
+    fun applyTagFilter(tag: TagFilter) {
+        val current = _state.value.filters
+        val target = current.withTagFilter(tag)
+        // The screen may already start with this filter (then nothing has to be done).
+        if (current == target) return
+        _state.update { it.copy(filters = target) }
         search()
     }
 
@@ -71,7 +95,8 @@ class SearchViewModel(
         if (current.loading || current.loadingMore || !current.hasMore) return
 
         _state.update { it.copy(loadingMore = true) }
-        viewModelScope.launch {
+        loadMoreJob?.cancel()
+        loadMoreJob = viewModelScope.launch {
             try {
                 val nextPage = current.page + 1
                 val result = repository.searchVehicles(
@@ -88,6 +113,9 @@ class SearchViewModel(
                         loadingMore = false
                     )
                 }
+            } catch (e: CancellationException) {
+                // The page load was cancelled (the screen was left) - not an error.
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(loadingMore = false, error = e.message) }
             }
@@ -115,7 +143,12 @@ class SearchViewModel(
     // ------------------------------------------------------------------ //
 
     private fun search() {
-        viewModelScope.launch {
+        // Only the newest search may write its result (otherwise an older, slower
+        // response could overwrite the newer one - e.g. after a tag was tapped).
+        searchJob?.cancel()
+        // A page load of the old result list must not be appended to the new one.
+        loadMoreJob?.cancel()
+        searchJob = viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null, page = 0) }
             try {
                 val result = repository.searchVehicles(
@@ -133,6 +166,10 @@ class SearchViewModel(
                         page = 0
                     )
                 }
+            } catch (e: CancellationException) {
+                // The search was replaced by a newer one - that is not an error.
+                // The state must not be touched here, the newer search owns it.
+                throw e
             } catch (e: Exception) {
                 _state.update {
                     it.copy(loading = false, error = e.message ?: "Search failed.")
@@ -144,5 +181,5 @@ class SearchViewModel(
 
 /** Is there any selection other than "All" in the filter panel? */
 fun Filters.hasNonDefaultSelection(): Boolean =
-    country != ALL || manufacturer != ALL || brand != ALL ||
+    country != ALL || manufacturer != ALL || brand != ALL || series != ALL ||
         serviceGroup != ALL || service != ALL || status != ALL

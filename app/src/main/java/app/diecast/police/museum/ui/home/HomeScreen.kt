@@ -132,7 +132,7 @@ private fun HeroHeader(totalAssets: Int, countries: Int, brands: Int) {
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = "A worldwide diecast model collection",
+            text = "A worldwide 1/43 emergency vehicles diecast database",
             style = MaterialTheme.typography.bodySmall,
             color = MuseumInkSoft,
             modifier = Modifier.padding(top = 2.dp, bottom = 14.dp)
