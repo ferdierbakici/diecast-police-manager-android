@@ -123,7 +123,7 @@ class OAuthRedirectTest {
     @Test
     fun `hata mesaji description yoksa varsayilan`() {
         val r = OAuthRedirect.parse("diecastpolice", "auth-callback", "?error=access_denied", null)!!
-        assertEquals("Giris basarisiz (access_denied).", r.errorMessage())
+        assertEquals("Sign-in failed (access_denied).", r.errorMessage())
     }
 
     @Test

@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
                 when (val result = container.authRepository.exchangeCodeForSession(redirect.code!!)) {
                     is AuthResult.Success -> Unit
                     is AuthResult.NeedsEmailConfirmation ->
-                        container.authRepository.setAuthMessage("Hesabiniz e-posta ile dogrulanmali.")
+                        container.authRepository.setAuthMessage("Your account needs to be verified by email.")
                     is AuthResult.Failure ->
                         container.authRepository.setAuthMessage(result.message)
                 }

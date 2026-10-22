@@ -79,7 +79,7 @@ fun LoginScreen(
         val url = googleUrl ?: return@LaunchedEffect
         val intent = CustomTabsIntent.Builder().build()
         runCatching { intent.launchUrl(context, android.net.Uri.parse(url)) }
-            .onFailure { viewModel.showAuthMessage("Tarayici acilamadi. Google girisi yapilamadi.") }
+            .onFailure { viewModel.showAuthMessage("Could not open the browser. Google sign-in failed.") }
         viewModel.consumeGoogleUrl()
     }
 
@@ -94,7 +94,7 @@ fun LoginScreen(
         if (activeSession != null) {
             // --- Giris yapilmis: hesap bilgisi -----------------------------
             Text(
-                text = "Hesabim",
+                text = "My Account",
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
@@ -111,18 +111,18 @@ fun LoginScreen(
                     .fillMaxWidth()
                     .padding(top = 12.dp)
             ) {
-                Text("Cikis yap")
+                Text("Sign out")
             }
             return@Column
         }
 
         Text(
-            text = if (registerMode) "Hesap olustur" else "Giris yap",
+            text = if (registerMode) "Create account" else "Sign in",
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 4.dp)
         )
         Text(
-            text = "Koleksiyonunuzu ve wishlist'inizi yonetmek icin giris yapin.",
+            text = "Sign in to manage your collection and wishlist.",
             style = MaterialTheme.typography.bodySmall,
             color = MuseumInkSoft,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -131,7 +131,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("E-posta") },
+            label = { Text("Email") },
             singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = KeyboardType.Email,
@@ -145,7 +145,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = displayName,
                 onValueChange = { displayName = it },
-                label = { Text("Ad Soyad") },
+                label = { Text("Full name") },
                 singleLine = true,
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -155,7 +155,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Sifre") },
+            label = { Text("Password") },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -201,7 +201,7 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text(if (registerMode) "Kayit ol" else "Giris yap")
+                Text(if (registerMode) "Sign up" else "Sign in")
             }
         }
 
@@ -209,12 +209,12 @@ fun LoginScreen(
             onClick = { viewModel.startGoogleLogin() },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Google ile giris yap")
+            Text("Continue with Google")
         }
 
         Text(
-            text = "Google ile giris icin Supabase panelinde\n" +
-                "\"Redirect URLs\" listesine su adresi ekleyin:\n${Config.REDIRECT_URI}",
+            text = "To sign in with Google, add this address to the\n" +
+                "\"Redirect URLs\" list in the Supabase dashboard:\n${Config.REDIRECT_URI}",
             style = MaterialTheme.typography.labelSmall,
             color = MuseumInkSoft,
             textAlign = TextAlign.Center,
@@ -233,12 +233,12 @@ fun LoginScreen(
                 viewModel.clearMessages()
                 registerMode = !registerMode
             }) {
-                Text(if (registerMode) "Zaten hesabim var" else "Hesabim yok, kayit ol")
+                Text(if (registerMode) "Already have an account" else "Sign up")
             }
         }
 
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            TextButton(onClick = onBack) { Text("Geri") }
+            TextButton(onClick = onBack) { Text("Back") }
         }
     }
 }

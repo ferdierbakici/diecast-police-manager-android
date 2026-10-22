@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import app.diecast.police.museum.ui.theme.MuseumInkSoft
 
 @Composable
-fun LoadingState(modifier: Modifier = Modifier, label: String = "Yukleniyor...") {
+fun LoadingState(modifier: Modifier = Modifier, label: String = "Loading...") {
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -69,7 +69,7 @@ fun ErrorState(
                 textAlign = TextAlign.Center
             )
             if (onRetry != null) {
-                Button(onClick = onRetry) { Text("Tekrar dene") }
+                Button(onClick = onRetry) { Text("Retry") }
             }
         }
     }

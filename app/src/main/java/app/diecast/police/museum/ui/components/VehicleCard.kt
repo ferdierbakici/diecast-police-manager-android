@@ -61,7 +61,7 @@ fun VehicleCard(
 
             Column(modifier = Modifier.padding(10.dp)) {
                 Text(
-                    text = vehicle.modelName?.takeIf { it.isNotBlank() } ?: "Isimsiz model",
+                    text = vehicle.modelName?.takeIf { it.isNotBlank() } ?: "Unnamed model",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
@@ -164,7 +164,7 @@ fun VehicleRowCard(
             )
             Column(modifier = Modifier.padding(8.dp)) {
                 Text(
-                    text = vehicle.modelName?.takeIf { it.isNotBlank() } ?: "Isimsiz model",
+                    text = vehicle.modelName?.takeIf { it.isNotBlank() } ?: "Unnamed model",
                     style = MaterialTheme.typography.labelLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis

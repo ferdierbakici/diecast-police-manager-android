@@ -9,7 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import app.diecast.police.museum.AppContainer
 
 val LocalAppContainer = staticCompositionLocalOf<AppContainer> {
-    error("AppContainer bulunamadi - MuseumApp.onCreate calistirilmali")
+    error("AppContainer not found - MuseumApp.onCreate must run first")
 }
 
 /** Container'dan ViewModel uretir. */

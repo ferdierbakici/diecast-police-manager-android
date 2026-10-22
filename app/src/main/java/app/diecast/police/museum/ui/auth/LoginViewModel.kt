@@ -44,7 +44,7 @@ class LoginViewModel(
 
     fun signIn(email: String, password: String) {
         if (email.isBlank() || password.isBlank()) {
-            _state.update { it.copy(error = "E-posta ve sifre gerekli.") }
+            _state.update { it.copy(error = "Email and password are required.") }
             return
         }
         submit { authRepository.signIn(email, password) }
@@ -52,11 +52,11 @@ class LoginViewModel(
 
     fun signUp(email: String, password: String, displayName: String) {
         if (email.isBlank() || password.isBlank()) {
-            _state.update { it.copy(error = "E-posta ve sifre gerekli.") }
+            _state.update { it.copy(error = "Email and password are required.") }
             return
         }
         if (password.length < 6) {
-            _state.update { it.copy(error = "Sifre en az 6 karakter olmali.") }
+            _state.update { it.copy(error = "Password must be at least 6 characters.") }
             return
         }
         submit { authRepository.signUp(email, password, displayName) }
@@ -111,8 +111,8 @@ class LoginViewModel(
                     _state.update {
                         it.copy(
                             loading = false,
-                            info = "Hesap olusturuldu. E-posta adresinize gelen dogrulama baglantisiyla " +
-                                "aktivin, sonra giris yapin."
+                            info = "Account created. Activate it with the verification link " +
+                                "sent to your email address, then sign in."
                         )
                     }
                 is AuthResult.Failure ->

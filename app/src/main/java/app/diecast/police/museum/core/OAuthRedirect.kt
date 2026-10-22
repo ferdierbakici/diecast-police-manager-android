@@ -30,7 +30,7 @@ data class OAuthRedirect(
     /** Kullaniciya gosterilecek hata metni. */
     fun errorMessage(): String? {
         if (!hasError) return null
-        return errorDescription?.takeIf { it.isNotBlank() } ?: "Giris basarisiz ($error)."
+        return errorDescription?.takeIf { it.isNotBlank() } ?: "Sign-in failed ($error)."
     }
 
     companion object {

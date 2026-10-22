@@ -48,10 +48,10 @@ fun HomeScreen(
     Box(modifier = modifier.fillMaxSize()) {
         when {
             state.loading && state.lastAdded.isEmpty() ->
-                LoadingState(label = "Muzeye yukleniyor...")
+                LoadingState(label = "Loading museum...")
 
             state.error != null && state.lastAdded.isEmpty() -> ErrorState(
-                message = state.error ?: "Veriler alinamadi.",
+                message = state.error ?: "Could not load data.",
                 onRetry = viewModel::refresh
             )
 
@@ -71,13 +71,13 @@ fun HomeScreen(
                 }
 
                 item(span = { GridItemSpan(2) }) {
-                    SectionTitle("Koleksiyona son katilanlar")
+                    SectionTitle("Recently in Collection")
                 }
 
                 item(span = { GridItemSpan(2) }) {
                     if (state.recentlyInCollection.isEmpty()) {
                         Text(
-                            text = "Koleksiyona yeni katilan model bulunmuyor.",
+                            text = "No models recently added to the collection.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MuseumInkSoft,
                             modifier = Modifier.padding(vertical = 8.dp)
@@ -95,7 +95,7 @@ fun HomeScreen(
                 }
 
                 item(span = { GridItemSpan(2) }) {
-                    SectionTitle("Son eklenen modeller")
+                    SectionTitle("Latest Added Models")
                 }
 
                 items(state.lastAdded, key = { it.id }) { vehicle ->
@@ -132,7 +132,7 @@ private fun HeroHeader(totalAssets: Int, countries: Int, brands: Int) {
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = "Dunya genelinde model araclari koleksiyonu",
+            text = "A worldwide diecast model collection",
             style = MaterialTheme.typography.bodySmall,
             color = MuseumInkSoft,
             modifier = Modifier.padding(top = 2.dp, bottom = 14.dp)

@@ -55,10 +55,10 @@ private data class TabItem(
 )
 
 private val TABS = listOf(
-    TabItem(Routes.HOME, "Ana Sayfa", Icons.Outlined.Home),
-    TabItem(Routes.SEARCH, "Arama", Icons.Outlined.Search),
-    TabItem(Routes.COLLECTION, "Koleksiyon", Icons.Outlined.Inventory2),
-    TabItem(Routes.LOGIN, "Hesap", Icons.Outlined.AccountCircle)
+    TabItem(Routes.HOME, "Home", Icons.Outlined.Home),
+    TabItem(Routes.SEARCH, "Search", Icons.Outlined.Search),
+    TabItem(Routes.COLLECTION, "Collection", Icons.Outlined.Inventory2),
+    TabItem(Routes.LOGIN, "Account", Icons.Outlined.AccountCircle)
 )
 
 @Composable

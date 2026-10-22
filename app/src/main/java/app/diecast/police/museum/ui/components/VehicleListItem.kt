@@ -54,7 +54,7 @@ fun VehicleListItem(
                     .padding(start = 12.dp)
             ) {
                 Text(
-                    text = vehicle.modelName?.takeIf { it.isNotBlank() } ?: "Isimsiz model",
+                    text = vehicle.modelName?.takeIf { it.isNotBlank() } ?: "Unnamed model",
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis

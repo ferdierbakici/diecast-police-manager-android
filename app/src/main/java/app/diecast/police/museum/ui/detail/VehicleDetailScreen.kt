@@ -130,11 +130,11 @@ fun VehicleDetailScreen(
             when {
                 state.loading -> LoadingState(
                     modifier = Modifier.padding(innerPadding),
-                    label = "Arac bilgisi yukleniyor..."
+                    label = "Loading vehicle details..."
                 )
 
                 state.error != null -> ErrorState(
-                    message = state.error ?: "Arac bilgisi alinamadi.",
+                    message = state.error ?: "Could not load vehicle details.",
                     modifier = Modifier.padding(innerPadding),
                     onRetry = { viewModel.load(vehicleId) }
                 )
@@ -196,7 +196,7 @@ private fun DetailContent(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = "Geri",
+                        contentDescription = "Back",
                         tint = Color.White
                     )
                 }
@@ -205,7 +205,7 @@ private fun DetailContent(
             // ---------- Baslik ----------
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                 Text(
-                    text = vehicle.modelName?.takeIf { it.isNotBlank() } ?: "Isimsiz model",
+                    text = vehicle.modelName?.takeIf { it.isNotBlank() } ?: "Unnamed model",
                     style = MaterialTheme.typography.headlineSmall,
                     color = MuseumInk
                 )
@@ -220,7 +220,7 @@ private fun DetailContent(
                     StatusBadge(vehicle.availabilityStatus)
                     if (collectionCount > 0 || wishlistCount > 0) {
                         Text(
-                            text = "$collectionCount koleksiyon  -  $wishlistCount wishlist",
+                            text = "$collectionCount in collection  -  $wishlistCount in wishlist",
                             style = MaterialTheme.typography.labelSmall,
                             color = MuseumInkSoft,
                             modifier = Modifier.padding(start = 8.dp)
@@ -237,56 +237,56 @@ private fun DetailContent(
             // ---------- Detay satirlari ----------
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
 
-                DetailSection("Model Bilgileri") {
-                    DetailRow("Model Yili", vehicle.modelYear?.toString())
-                    DetailRow("Olcek", vehicle.scale)
-                    DetailRow("Model Kodu", vehicle.modelCode)
-                    DetailRow("Renk", vehicle.color)
-                    DetailRow("Malzeme", vehicle.material)
-                    DetailRow("Boyut", vehicle.modelLength?.let {
+                DetailSection("Model Details") {
+                    DetailRow("Model Year", vehicle.modelYear?.toString())
+                    DetailRow("Scale", vehicle.scale)
+                    DetailRow("Model Code", vehicle.modelCode)
+                    DetailRow("Color", vehicle.color)
+                    DetailRow("Material", vehicle.material)
+                    DetailRow("Dimensions", vehicle.modelLength?.let {
                         "${trimNumber(it)} ${vehicle.modelLengthUnit.orEmpty()}".trim()
                     })
                 }
 
-                DetailSection("Durum") {
-                    DetailRow("Mevcut Durum", vehicle.availabilityStatus)
-                    DetailRow("Onceki Durum", vehicle.previousStatus)
-                    DetailRow("Durum Degisikligi", vehicle.statusChangedAt?.let {
+                DetailSection("Status") {
+                    DetailRow("Current Status", vehicle.availabilityStatus)
+                    DetailRow("Previous Status", vehicle.previousStatus)
+                    DetailRow("Status Changed", vehicle.statusChangedAt?.let {
                         formatDateTime(it)
                     })
                 }
 
-                DetailSection("Konum ve Karsilastirma") {
-                    DetailRow("Ulke", vehicle.countryName?.let {
+                DetailSection("Location & Comparison") {
+                    DetailRow("Country", vehicle.countryName?.let {
                         listOfNotNull(vehicle.countryFlag, it).joinToString(" ")
                     })
-                    DetailRow("Uretici", vehicle.manufacturerName)
-                    DetailRow("Marka", vehicle.brandName)
-                    DetailRow("Seri", vehicle.seriesName)
-                    DetailRow("Sergi Tipi", vehicle.exhibitionType)
+                    DetailRow("Manufacturer", vehicle.manufacturerName)
+                    DetailRow("Brand", vehicle.brandName)
+                    DetailRow("Series", vehicle.seriesName)
+                    DetailRow("Display Type", vehicle.exhibitionType)
                 }
 
-                DetailSection("Koleksiyon") {
-                    DetailRow("Alim Tarihi", vehicle.acquisitionDate)
-                    DetailRow("Alim Yeri", vehicle.acquiredFrom)
-                    DetailRow("Piyasa Degeri", vehicle.marketValue?.let {
+                DetailSection("Collection") {
+                    DetailRow("Acquisition Date", vehicle.acquisitionDate)
+                    DetailRow("Acquired From", vehicle.acquiredFrom)
+                    DetailRow("Market Value", vehicle.marketValue?.let {
                         "${trimNumber(it)} ${vehicle.currency.orEmpty()}".trim()
                     })
-                    DetailRow("Puan", vehicle.rating?.takeIf { it > 0 }?.toString())
-                    DetailRow("Sergi No", vehicle.showcaseNum)
-                    DetailRow("Raf No", vehicle.shelfNum)
-                    DetailRow("Kutu No", vehicle.boxNum)
+                    DetailRow("Rating", vehicle.rating?.takeIf { it > 0 }?.toString())
+                    DetailRow("Display No", vehicle.showcaseNum)
+                    DetailRow("Shelf No", vehicle.shelfNum)
+                    DetailRow("Box No", vehicle.boxNum)
                 }
 
                 if (vehicle.isCustomized == true || !vehicle.customizerName.isNullOrBlank()) {
-                    DetailSection("Ozel Yapim") {
-                        DetailRow("Ozel Yapim", if (vehicle.isCustomized == true) "Evet" else "Hayir")
-                        DetailRow("Uretici", vehicle.customizerName)
+                    DetailSection("Customization") {
+                        DetailRow("Customized", if (vehicle.isCustomized == true) "Yes" else "No")
+                        DetailRow("Customizer", vehicle.customizerName)
                     }
                 }
 
                 if (!vehicle.notes.isNullOrBlank()) {
-                    DetailSection("Notlar") {
+                    DetailSection("Notes") {
                         Text(
                             text = vehicle.notes,
                             style = MaterialTheme.typography.bodyMedium,
@@ -298,10 +298,10 @@ private fun DetailContent(
 
                 val links = listOfNotNull(
                     vehicle.instagramUrl?.takeIf { it.isNotBlank() }?.let { "Instagram" to it },
-                    vehicle.websiteUrl?.takeIf { it.isNotBlank() }?.let { "Web Sitesi" to it }
+                    vehicle.websiteUrl?.takeIf { it.isNotBlank() }?.let { "Website" to it }
                 )
                 if (links.isNotEmpty()) {
-                    DetailSection("Baglantilar") {
+                    DetailSection("Links") {
                         links.forEach { (label, url) ->
                             Row(
                                 modifier = Modifier
@@ -334,7 +334,7 @@ private fun DetailContent(
                 }
 
                 Text(
-                    text = "Kayit no: ${vehicle.id}",
+                    text = "Record no: ${vehicle.id}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MuseumInkSoft,
                     modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
@@ -450,7 +450,7 @@ private fun ActionBar(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (inCollection) "Koleksiyonda" else "Koleksiyona ekle")
+                Text(if (inCollection) "In collection" else "Add to collection")
             }
 
             OutlinedButton(
@@ -466,7 +466,7 @@ private fun ActionBar(
                     tint = if (inWishlist) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (inWishlist) "Wishlist'te" else "Wishlist")
+                Text(if (inWishlist) "In wishlist" else "Wishlist")
             }
 
             if (busy) {
@@ -484,6 +484,6 @@ private fun trimNumber(value: Double): String =
 
 private fun formatDateTime(raw: String): String {
     val millis = Timestamps.parseIsoMillis(raw) ?: return raw
-    val fmt = java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale("tr"))
+    val fmt = java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.US)
     return fmt.format(java.util.Date(millis))
 }

@@ -135,7 +135,7 @@ class SearchViewModel(
                 }
             } catch (e: Exception) {
                 _state.update {
-                    it.copy(loading = false, error = e.message ?: "Arama yapilamadi.")
+                    it.copy(loading = false, error = e.message ?: "Search failed.")
                 }
             }
         }

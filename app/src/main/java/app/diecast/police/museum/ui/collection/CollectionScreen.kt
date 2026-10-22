@@ -50,7 +50,7 @@ fun CollectionScreen(
                 selected = state.tab == CollectionViewModel.TAB_COLLECTION,
                 onClick = { viewModel.switchTab(CollectionViewModel.TAB_COLLECTION) },
                 text = {
-                    Text("Koleksiyonum (${state.collection.size})")
+                    Text("My Collection (${state.collection.size})")
                 }
             )
             Tab(
@@ -66,20 +66,20 @@ fun CollectionScreen(
             when {
                 !state.signedIn && !state.loading -> SignedOutPrompt(onLoginClick)
 
-                state.loading -> LoadingState(label = "Listeler yukleniyor...")
+                state.loading -> LoadingState(label = "Loading lists...")
 
                 state.error != null -> ErrorState(
-                    message = state.error ?: "Listeler alinamadi.",
+                    message = state.error ?: "Could not load lists.",
                     onRetry = viewModel::load
                 )
 
                 state.visible.isEmpty() -> EmptyState(
                     title = if (state.tab == CollectionViewModel.TAB_WISHLIST) {
-                        "Wishlist bos"
+                        "Wishlist is empty"
                     } else {
-                        "Koleksiyonunuz bos"
+                        "Your collection is empty"
                     },
-                    subtitle = "Arac detay sayfasindan koleksiyona ekleyebilirsiniz."
+                    subtitle = "You can add vehicles to your collection from the vehicle detail page."
                 )
 
                 else -> LazyColumn(
@@ -113,17 +113,17 @@ private fun SignedOutPrompt(onLoginClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = "Koleksiyonunuzu gormek icin giris yapin",
+                text = "Sign in to see your collection",
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center
             )
             Text(
-                text = "Kendi koleksiyonunuzu ve wishlist'inizi yonetmek icin hesabiniza giris yapin.",
+                text = "Sign in to manage your own collection and wishlist.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MuseumInkSoft,
                 textAlign = TextAlign.Center
             )
-            Button(onClick = onLoginClick) { Text("Giris yap") }
+            Button(onClick = onLoginClick) { Text("Sign in") }
         }
     }
 }

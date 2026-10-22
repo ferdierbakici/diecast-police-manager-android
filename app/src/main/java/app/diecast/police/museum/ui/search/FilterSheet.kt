@@ -55,7 +55,7 @@ fun FilterSheet(
                 .padding(bottom = 28.dp)
         ) {
             Text(
-                text = "Filtreler",
+                text = "Filters",
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(bottom = 14.dp)
             )
@@ -72,7 +72,7 @@ fun FilterSheet(
             }
 
             SelectField(
-                label = "Ulke",
+                label = "Country",
                 value = draft.country,
                 options = options.countries,
                 onSelect = { draft = draft.copy(country = it) },
@@ -80,7 +80,7 @@ fun FilterSheet(
             )
 
             SelectField(
-                label = "Uretici",
+                label = "Manufacturer",
                 value = draft.manufacturer,
                 options = options.manufacturers,
                 onSelect = { draft = draft.copy(manufacturer = it) },
@@ -89,7 +89,7 @@ fun FilterSheet(
             )
 
             SelectField(
-                label = "Marka",
+                label = "Brand",
                 value = draft.brand,
                 options = options.brands,
                 onSelect = { draft = draft.copy(brand = it) },
@@ -98,7 +98,7 @@ fun FilterSheet(
             )
 
             SelectField(
-                label = "Durum",
+                label = "Status",
                 value = draft.status,
                 options = options.statuses,
                 onSelect = { draft = draft.copy(status = it) },
@@ -107,7 +107,7 @@ fun FilterSheet(
             )
 
             Text(
-                text = "Acil Servis Grubu",
+                text = "Emergency Service Group",
                 style = MaterialTheme.typography.titleSmall,
                 color = MuseumInkSoft,
                 modifier = Modifier.padding(top = 18.dp, bottom = 6.dp)
@@ -119,7 +119,7 @@ fun FilterSheet(
                 FilterChip(
                     selected = draft.serviceGroup == ALL,
                     onClick = { draft = draft.copy(serviceGroup = ALL, service = ALL) },
-                    label = { Text("Tumu") }
+                    label = { Text("All") }
                 )
                 EmergencyGroups.GROUPS.forEach { group ->
                     FilterChip(
@@ -142,7 +142,7 @@ fun FilterSheet(
             }
 
             SelectField(
-                label = "Acil Servis",
+                label = "Emergency Service",
                 value = draft.service,
                 options = serviceOptions,
                 onSelect = { draft = draft.copy(service = it) },
@@ -159,12 +159,12 @@ fun FilterSheet(
                 OutlinedButton(
                     onClick = onClear,
                     modifier = Modifier.weight(1f)
-                ) { Text("Temizle") }
+                ) { Text("Clear") }
 
                 Button(
                     onClick = { onApply(draft) },
                     modifier = Modifier.weight(1f)
-                ) { Text("Uygula") }
+                ) { Text("Apply") }
             }
         }
     }

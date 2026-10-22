@@ -54,7 +54,7 @@ class HomeViewModel(
                 }
             } catch (e: Exception) {
                 _state.update {
-                    it.copy(loading = false, error = e.message ?: "Veriler alinamadi.")
+                    it.copy(loading = false, error = e.message ?: "Could not load data.")
                 }
             }
         }

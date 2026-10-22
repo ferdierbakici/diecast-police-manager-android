@@ -77,12 +77,12 @@ fun SearchScreen(
                 value = state.filters.search,
                 onValueChange = viewModel::onSearchQueryChange,
                 singleLine = true,
-                placeholder = { Text("Model ara...") },
+                placeholder = { Text("Search model...") },
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 trailingIcon = {
                     if (state.filters.search.isNotEmpty()) {
                         IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                            Icon(Icons.Outlined.Close, contentDescription = "Temizle")
+                            Icon(Icons.Outlined.Close, contentDescription = "Clear")
                         }
                     }
                 },
@@ -108,7 +108,7 @@ fun SearchScreen(
                     FilterChip(
                         selected = state.filters.hasNonDefaultSelection(),
                         onClick = { sheetOpen = true },
-                        label = { Text("Filtreler") },
+                        label = { Text("Filters") },
                         leadingIcon = {
                             Icon(
                                 Icons.Outlined.FilterList,
@@ -123,7 +123,7 @@ fun SearchScreen(
                     FilterChip(
                         selected = false,
                         onClick = viewModel::clearFilters,
-                        label = { Text("Filtreleri temizle") }
+                        label = { Text("Clear filters") }
                     )
                 }
 
@@ -131,7 +131,7 @@ fun SearchScreen(
 
                 if (!state.loading) {
                     Text(
-                        text = "${state.total} model",
+                        text = "${state.total} results",
                         style = MaterialTheme.typography.labelMedium,
                         color = MuseumInkSoft
                     )
@@ -142,16 +142,16 @@ fun SearchScreen(
         // ---- Sonuclar ----
         Box(modifier = Modifier.weight(1f)) {
             when {
-                state.loading && state.results.isEmpty() -> LoadingState(label = "Aranıyor...")
+                state.loading && state.results.isEmpty() -> LoadingState(label = "Searching...")
 
                 state.error != null && state.results.isEmpty() -> ErrorState(
-                    message = state.error ?: "Arama yapilamadi.",
+                    message = state.error ?: "Search failed.",
                     onRetry = viewModel::retry
                 )
 
                 state.results.isEmpty() -> EmptyState(
-                    title = "Sonuc bulunamadi",
-                    subtitle = "Arama kelimesini veya filtreleri degistirmeyi deneyin."
+                    title = "No results found",
+                    subtitle = "Try a different search term or change the filters."
                 )
 
                 else -> LazyColumn(

@@ -42,7 +42,7 @@ fun SelectField(
     options: List<String>,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
-    allLabel: String = "Tumu",
+    allLabel: String = "All",
     enabled: Boolean = true
 ) {
     var dialogOpen by remember { mutableStateOf(false) }
@@ -117,7 +117,7 @@ fun OptionPickerDialog(
                     value = query,
                     onValueChange = { query = it },
                     singleLine = true,
-                    placeholder = { Text("Ara...") },
+                    placeholder = { Text("Search...") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 LazyColumn(
@@ -152,7 +152,7 @@ fun OptionPickerDialog(
                     if (filtered.isEmpty()) {
                         item {
                             Text(
-                                text = "Sonuc bulunamadi.",
+                                text = "No results found.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MuseumInkSoft,
                                 modifier = Modifier.padding(vertical = 16.dp)
@@ -163,7 +163,7 @@ fun OptionPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Kapat") }
+            TextButton(onClick = onDismiss) { Text("Close") }
         }
     )
 }

@@ -57,7 +57,7 @@ class VehicleDetailViewModel(
 
                 if (vehicle == null) {
                     _state.update {
-                        it.copy(loading = false, error = "Arac bulunamadi.")
+                        it.copy(loading = false, error = "Vehicle not found.")
                     }
                     return@launch
                 }
@@ -74,7 +74,7 @@ class VehicleDetailViewModel(
                 loadMyStatus(id)
             } catch (e: Exception) {
                 _state.update {
-                    it.copy(loading = false, error = e.message ?: "Arac bilgisi alinamadi.")
+                    it.copy(loading = false, error = e.message ?: "Could not load vehicle details.")
                 }
             }
         }
@@ -116,16 +116,16 @@ class VehicleDetailViewModel(
                         busy = false,
                         myStatus = newStatus,
                         message = when (newStatus) {
-                            STATUS_COLLECTION -> "Koleksiyona eklendi."
-                            STATUS_WISHLIST -> "Wishlist'e eklendi."
-                            else -> "Listelerden cikarildi."
+                            STATUS_COLLECTION -> "Added to collection."
+                            STATUS_WISHLIST -> "Added to wishlist."
+                            else -> "Removed from lists."
                         }
                     )
                 }
                 refreshCounts(vehicle.id)
             } else {
                 _state.update {
-                    it.copy(busy = false, message = "Islem basarisiz. Tekrar deneyin.")
+                    it.copy(busy = false, message = "Operation failed. Please try again.")
                 }
             }
         }

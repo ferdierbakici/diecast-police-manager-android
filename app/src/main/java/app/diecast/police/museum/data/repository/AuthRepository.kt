@@ -102,13 +102,13 @@ class AuthRepository(
             token = accessToken
         )
         if (!userResult.isSuccess) {
-            return AuthResult.Failure("Kullanici bilgisi alinamadi (HTTP ${userResult.code}).")
+            return AuthResult.Failure("Could not load user info (HTTP ${userResult.code}).")
         }
         val raw = userResult.body
         val id = runCatching {
             (Json.default.parseToJsonElement(raw) as? JsonObject)
                 ?.get("id")?.jsonPrimitive?.content
-        }.getOrNull() ?: return AuthResult.Failure("Oturum bilgisi alinamadi.")
+        }.getOrNull() ?: return AuthResult.Failure("Could not load session info.")
 
         val email = runCatching {
             (Json.default.parseToJsonElement(raw) as? JsonObject)
@@ -185,7 +185,7 @@ class AuthRepository(
         store.clearPkceVerifier()
         if (verifier.isNullOrBlank()) {
             return AuthResult.Failure(
-                "Giris dogrulama verisi bulunamadi. Lutfen tekrar deneyin."
+                "Login verification data not found. Please try again."
             )
         }
         val body = buildJsonObject {
@@ -207,13 +207,13 @@ class AuthRepository(
                 ?: error?.msg
                 ?: error?.message
                 ?: error?.error
-                ?: "Giris basarisiz (HTTP ${result.code})"
+                ?: "Sign-in failed (HTTP ${result.code})"
             return AuthResult.Failure(message)
         }
 
         val session = runCatching {
             Json.default.decodeFromString<AuthSession>(result.body)
-        }.getOrNull() ?: return AuthResult.Failure("Oturum yaniti okunamadi.")
+        }.getOrNull() ?: return AuthResult.Failure("Could not read the session response.")
 
         // E-posta dogrulama acikse session'siz gelir.
         val access = session.accessToken
@@ -221,7 +221,7 @@ class AuthRepository(
         val userId = session.user?.id
         if (access.isNullOrBlank() || refresh.isNullOrBlank() || userId.isNullOrBlank()) {
             return if (email != null) AuthResult.NeedsEmailConfirmation(email)
-            else AuthResult.Failure("Oturum yaniti eksik token iceriyor.")
+            else AuthResult.Failure("Session response is missing a token.")
         }
 
         val stored = Session(
